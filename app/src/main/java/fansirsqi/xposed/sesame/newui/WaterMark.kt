@@ -37,7 +37,7 @@ fun WatermarkLayer(
             verifuids.mapIndexed { index, uid -> "UID${index + 1}: $uid" }
         }
         val versionLines = listOf(
-            "Ver: ${BuildConfig.VERSION_NAME}.${BuildConfig.BUILD_TYPE}",
+            "Ver: ${BuildConfig.VERSION_NAME}.${BuildConfig.VERSION_CODE}",
             "Build: ${BuildConfig.BUILD_DATE}", // 稍微简化了一下
         )
         val blank=""
