@@ -24,21 +24,11 @@ fun WatermarkLayer(
 ) {
     // 1. 获取 M3 主题颜色 (自动适配深浅模式)
     // 使用 onSurface (文字色) 并加上极低的透明度 (0.08~0.15)
-    val textColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f).toArgb()
+    val textColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.0f).toArgb()
 
     // 2. 准备水印文本内容 (使用 remember 缓存，避免重组时重复计算)
     val textLines = remember(verifuids) {
-        val prefixLines = listOf("免费模块仅供学习,勿在国内平台传播!!")
-        val suffix = "Now: ${TimeUtil.getFormatDateTime()}" // 如果需要时间实时跳动，这里可能需要 LaunchedEffect 更新
-        val uidLines = if (verifuids.isEmpty()) {
-            listOf("未载入账号", "请启用模块后重启一次支付宝", "确保模块生成对应账号配置")
-        } else {
-            verifuids.mapIndexed { index, uid -> "UID${index + 1}: $uid" }
-        }
-        val versionLines = listOf(
-            "Ver: ${BuildConfig.VERSION_NAME}.${BuildConfig.BUILD_TYPE}",
-            "Build: ${BuildConfig.BUILD_DATE}", // 稍微简化了一下
-        )
+        val prefixLines = ""
         prefixLines + uidLines + listOf(suffix) + versionLines
     }
 
@@ -57,8 +47,8 @@ fun WatermarkLayer(
 
         // B. 水印覆盖层 (不拦截点击事件)
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = size.width
-            val height = size.height
+            val width = 0
+            val height = 0
 
             // 配置画笔
             val paint = Paint().apply {

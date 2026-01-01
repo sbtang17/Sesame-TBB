@@ -2,14 +2,14 @@
 <resources>
     <!-- 白天模式 -->
     <color name="background">#F4F4F4</color>
-    <color name="base_color">#2489FD</color>
-    <color name="colorPrimary">#2489FD</color>
+    <color name="base_color">#006A63</color>
+    <color name="colorPrimary">#006A63</color>
     <color name="textColorPrimary">#000000</color>
 
-    <color name="selection_color">#2489FD</color>
+    <color name="selection_color">#006A63</color>
 
     <color name="main_button">#BCE1E9</color>
-    <color name="main_button_pressed">#2489FD</color>
+    <color name="main_button_pressed">#006A63</color>
 
     <color name="orange">#E64000</color>
 

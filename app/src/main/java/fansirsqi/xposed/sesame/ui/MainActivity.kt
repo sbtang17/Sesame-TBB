@@ -197,7 +197,7 @@ class MainActivity : BaseActivity() {
             MainUiEvent.OpenFarmLog -> openLogFile(Files.getFarmLogFile())
             MainUiEvent.OpenOtherLog -> openLogFile(Files.getOtherLogFile())
             MainUiEvent.OpenGithub -> openUrl("https://github.com/Fansirsqi/Sesame-TK")
-            MainUiEvent.OpenErrorLog -> executeWithVerification { openLogFile(Files.getErrorLogFile()) }
+            MainUiEvent.OpenErrorLog -> openLogFile(Files.getErrorLogFile())
             MainUiEvent.OpenAllLog -> openLogFile(Files.getRecordLogFile())
             MainUiEvent.OpenSettings -> {
                 showUserSelectionDialog(userList) { selectedUser ->
