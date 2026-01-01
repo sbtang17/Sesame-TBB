@@ -39,8 +39,7 @@ fun WatermarkLayer(
             "Ver: ${BuildConfig.VERSION_NAME}.${BuildConfig.VERSION_CODE}",
             "Build: ${BuildConfig.BUILD_DATE}", // 稍微简化了一下
         )
-        val blank=""
-        blank
+        listOf("")
         
     }
 
@@ -59,8 +58,10 @@ fun WatermarkLayer(
 
         // B. 水印覆盖层 (不拦截点击事件)
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = 0
-            val height = 0
+            val enableWatermark = false
+            if (!enableWatermark) return@Canvas
+            val width = size.width
+            val height = size.height
 
             // 配置画笔
             val paint = Paint().apply {
