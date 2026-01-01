@@ -1,14 +1,14 @@
 name: 📦Auto Build for N
-run-name: 📦 ${{ github.actor }} @ Github Action
+# run-name: 📦 ${{ github.actor }} @ Github Action
 
 on:
-  #  push:
-  #    branches: [ "main" ]
-  #  pull_request:
-  #    branches: [ "main" ]
+  push:
+    branches: [ "develop" ]
+  pull_request:
+    branches: [ "develop" ]
   release:
     types: [ published ]
-#  workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -226,6 +226,7 @@ jobs:
             > **如果不确定，请下载 `universal` 版本。**
 
       - name: 🔁 Sync Release to Target Repository
+        if: github.event_name == 'release' && github.event.action == 'published'
         uses: softprops/action-gh-release@v2
         with:
           repository: Xposed-Modules-Repo/fansirsqi.xposed.sesame # 目标仓库的拥有者和仓库名称

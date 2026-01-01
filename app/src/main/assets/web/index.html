@@ -66,14 +66,7 @@
                                 </div>
                             </template>
                             <div class="content-box">
-                                <div class="flex-space-between pdTB10" v-if="tabs_index===1">
-                                    <div class="title main-color">官网下载地址</div>
-                                    <div class="flex-center">
-                                        <a href="https://github.com/Fansirsqi/Sesame-TK" target="_blank" class="main-color">
-                                            Sesame-TK
-                                        </a>
-                                    </div>
-                                </div>
+                                
                                 <div v-for="(item,index) in setData[tabs_index]" :key="item.name+index">
                                     <!-- 布尔组件 -->
                                     <div class="flex-space-between pdTB10" v-if="item.type==='BOOLEAN'">
@@ -152,14 +145,6 @@
                                 </div>
                             </template>
                             <div class="content-box">
-                                <div class="flex-space-between pdTB10" v-if="tabs_index===1">
-                                    <div class="title main-color">官网下载地址</div>
-                                    <div class="flex-center">
-                                        <a href="https://github.com/Fansirsqi/Sesame-TK" target="_blank" class="main-color">
-                                            Sesame-TK
-                                        </a>
-                                    </div>
-                                </div>
                                 <div v-for="(item,index) in setData[tabs_index]" :key="item.name+index">
                                     <div class="flex-space-between pdTB10" v-if="item.type==='BOOLEAN'">
                                         <div class="title">{{item.name}}</div>

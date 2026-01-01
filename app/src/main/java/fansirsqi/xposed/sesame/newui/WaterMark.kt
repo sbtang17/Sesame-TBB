@@ -24,7 +24,7 @@ fun WatermarkLayer(
 ) {
     // 1. 获取 M3 主题颜色 (自动适配深浅模式)
     // 使用 onSurface (文字色) 并加上极低的透明度 (0.08~0.15)
-    val textColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f).toArgb()
+    val textColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.0f).toArgb()
 
     // 2. 准备水印文本内容 (使用 remember 缓存，避免重组时重复计算)
     val textLines = remember(verifuids) {
@@ -39,7 +39,9 @@ fun WatermarkLayer(
             "Ver: ${BuildConfig.VERSION_NAME}.${BuildConfig.BUILD_TYPE}",
             "Build: ${BuildConfig.BUILD_DATE}", // 稍微简化了一下
         )
-        prefixLines + uidLines + listOf(suffix) + versionLines
+        val blank=""
+        blank
+        
     }
 
     // 3. 字体大小转像素
@@ -57,8 +59,8 @@ fun WatermarkLayer(
 
         // B. 水印覆盖层 (不拦截点击事件)
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = size.width
-            val height = size.height
+            val width = 0
+            val height = 0
 
             // 配置画笔
             val paint = Paint().apply {
