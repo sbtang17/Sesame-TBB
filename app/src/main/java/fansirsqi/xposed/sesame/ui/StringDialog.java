@@ -119,7 +119,7 @@ public class StringDialog {
                 .setPositiveButton(positiveButton, (dialog, which) -> dialog.dismiss())
                 .create();
 
-        alertDialog.show();
+        // alertDialog.show();
 
         Button button = alertDialog.getButton(DialogInterface.BUTTON_POSITIVE);
         if (button != null) {
