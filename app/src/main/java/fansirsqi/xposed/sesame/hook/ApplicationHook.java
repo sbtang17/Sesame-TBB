@@ -375,7 +375,7 @@ public class ApplicationHook {
             List<String> execAtTimeList = BaseModel.Companion.getExecAtTimeList().getValue();
             if (execAtTimeList != null && execAtTimeList.contains("-1")) {
                 Log.record(TAG, "定时执行未开启,5分钟执行一次！");
-                scheduleDelayedExecution(checkInterval);
+                SchedulerAdapter.scheduleDelayedExecution(checkInterval);
                 return;
             }
 
