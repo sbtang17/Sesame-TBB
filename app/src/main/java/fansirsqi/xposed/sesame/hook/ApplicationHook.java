@@ -374,7 +374,7 @@ public class ApplicationHook {
             int checkInterval = BaseModel.Companion.getCheckInterval().getValue();
             List<String> execAtTimeList = BaseModel.Companion.getExecAtTimeList().getValue();
             if (execAtTimeList != null && execAtTimeList.contains("-1")) {
-                Log.record(TAG, "定时执行未开启,["+checkInterval+"]分钟执行一次！");
+                Log.record(TAG, "定时执行未开启,["+checkInterval/60000+"]分钟执行一次！");
                 SchedulerAdapter.scheduleDelayedExecution(checkInterval);
                 return;
             }
@@ -497,7 +497,7 @@ public class ApplicationHook {
             XposedHelpers.findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    mainHandler = new Handler(Looper.getMainLooper());
+                    // mainHandler = new Handler(Looper.getMainLooper());
                     appContext = (Context) param.args[0];
                     //LOG日志的初始化
                     Log.init(appContext);
