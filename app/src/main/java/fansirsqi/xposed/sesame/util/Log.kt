@@ -98,12 +98,14 @@ object Log {
 
     @JvmStatic
     fun debug(msg: String) {
+        return   // 临时关闭 debug 输出
         record(msg)
         DEBUG_LOGGER.debug("{}", msg)
     }
 
     @JvmStatic
     fun debug(tag: String, msg: String) {
+        return   // 临时关闭 debug 输出
         debug("[$tag]: $msg")
     }
 
