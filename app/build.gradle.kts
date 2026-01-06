@@ -144,6 +144,7 @@ dependencies {
 //    implementation(libs.rikka.hidden.stub)
     // implementation(libs.ui.tooling.preview.android)
     implementation("com.github.niki914:cmd-android:0.8.2")
+    implementation ('dev.rikka.shizuku:provider:13.1.5')
     implementation(libs.androidx.ui.text.google.fonts) // 用于通过 Shizuku 执行命令
 
     // Compose 相关依赖 - 现代化 UI 框架
