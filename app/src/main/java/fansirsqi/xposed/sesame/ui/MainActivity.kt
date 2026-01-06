@@ -21,6 +21,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -83,9 +85,8 @@ import fansirsqi.xposed.sesame.SesameApplication.Companion.preferencesKey
 import fansirsqi.xposed.sesame.entity.UserEntity
 import fansirsqi.xposed.sesame.newui.DeviceInfoCard
 import fansirsqi.xposed.sesame.newui.DeviceInfoUtil
+import fansirsqi.xposed.sesame.newui.WatermarkLayer
 import fansirsqi.xposed.sesame.newutil.IconManager
-import fansirsqi.xposed.sesame.ui.MainViewModel.Companion.verifyId
-import fansirsqi.xposed.sesame.ui.components.WatermarkLayer
 import fansirsqi.xposed.sesame.ui.log.LogViewerComposeActivity
 import fansirsqi.xposed.sesame.ui.theme.AppTheme
 import fansirsqi.xposed.sesame.util.Detector
@@ -101,7 +102,6 @@ import java.io.File
 class MainActivity : BaseActivity() {
 
     private val viewModel: MainViewModel by viewModels()
-//    private lateinit var watermarkView: WatermarkView
 
     // Shizuku 监听器
     private val shizukuListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
@@ -115,7 +115,8 @@ class MainActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
 
         // 1. 检查权限并初始化逻辑
-        if (PermissionUtil.checkOrRequestFilePermissions(this)) {
+        hasPermissions = PermissionUtil.checkOrRequestFilePermissions(this)
+        if (hasPermissions) {
             viewModel.initAppLogic()
             // 🔥 修复：Native 检测必须在 Activity 中调用
             initNativeDetector()
@@ -150,7 +151,6 @@ class MainActivity : BaseActivity() {
                     )
                 }
             }
-
         }
 
 //        WatermarkView.install(activity = this)
@@ -178,6 +178,7 @@ class MainActivity : BaseActivity() {
         data object OpenErrorLog : MainUiEvent()
         data object OpenOtherLog : MainUiEvent()
         data object OpenAllLog : MainUiEvent()
+        data object OpenDebugLog : MainUiEvent()
         data object OpenSettings : MainUiEvent()
 
         // 🔥 新增菜单相关事件
@@ -199,12 +200,12 @@ class MainActivity : BaseActivity() {
             MainUiEvent.OpenGithub -> openUrl("https://github.com/Fansirsqi/Sesame-TK")
             MainUiEvent.OpenErrorLog -> openLogFile(Files.getErrorLogFile())
             MainUiEvent.OpenAllLog -> openLogFile(Files.getRecordLogFile())
+            MainUiEvent.OpenDebugLog -> openLogFile(Files.getDebugLogFile())
             MainUiEvent.OpenSettings -> {
                 showUserSelectionDialog(userList) { selectedUser ->
                     navigateToSettings(selectedUser)
                 }
             }
-
             // 🔥 新增菜单逻辑处理
             is MainUiEvent.ToggleIconHidden -> {
                 val shouldHide = event.isHidden
@@ -226,8 +227,6 @@ class MainActivity : BaseActivity() {
                     .setNegativeButton(R.string.cancel) { d, _ -> d.dismiss() }
                     .show()
             }
-
-
         }
     }
 
@@ -432,43 +431,100 @@ fun MainScreen(
 
     // 异步加载设备信息，启动后自动更新3次
     val deviceInfoMap by produceState<Map<String, String>?>(initialValue = null) {
-        value = DeviceInfoUtil.showInfo(verifyId, context)
+        value = DeviceInfoUtil.showInfo(context)
 
         repeat(1) {
             delay(200)
-            value = DeviceInfoUtil.showInfo(verifyId, context)
+            value = DeviceInfoUtil.showInfo(context)
         }
     }
 
+    // ... 在 Scaffold 或 TopAppBar 之前的代码 ...
+
     Scaffold(
-        // 标题栏
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-//                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-
                     Text(
                         text = "当前载入: $activeUserName",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-//                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 ),
-                // 🔥 添加右侧菜单按钮
                 actions = {
+                    // 🔥 获取 UriHandler 用于处理链接跳转
+                    val uriHandler = LocalUriHandler.current
+
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "更多")
                     }
 
-                    // 下拉菜单
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
-                        // 1. 隐藏/显示图标
+                        // --- 新增部分开始 ---
+
+                        // 1. 免费软件 (建议设为不可点击，仅作为声明)
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "本应用为免费软件",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            onClick = { /* 仅展示，不执行操作 */ },
+                            enabled = false // 设为 false 使其看起来像标题/标签，不可点击
+                        )
+
+                        // 2. 禁止倒卖 (建议用红色警告色)
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "严禁倒卖/付费购买",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            onClick = { /* 仅展示，不执行操作 */ },
+                            enabled = false
+                        )
+
+                        // 3. Github 跳转
+                        DropdownMenuItem(
+                            text = { Text("Github 仓库") },
+                            onClick = {
+                                // 请替换为实际的 Github 地址
+                                uriHandler.openUri("https://github.com/Fansirsqi/Sesame-TK")
+                                showMenu = false
+                            }
+                        )
+
+                        // 4. TG 跳转
+                        DropdownMenuItem(
+                            text = { Text("Telegram 频道") },
+                            onClick = {
+                                // 请替换为实际的 TG 链接
+                                uriHandler.openUri("https://t.me/Sesame_TK_Channel")
+                                showMenu = false
+                            }
+                        )
+
+                        // 5. QQ 群跳转
+                        DropdownMenuItem(
+                            text = { Text("加入 QQ 群") },
+                            onClick = {
+                                // 建议使用 QQ 官方生成的加群网页链接，或者手动处理 mqqapi 协议
+                                uriHandler.openUri("https://qm.qq.com/q/Aj0Xby6AGQ")
+                                showMenu = false
+                            }
+                        )
+
+                        // 6. 隐藏/显示图标 (原第一行)
                         DropdownMenuItem(
                             text = { Text(if (isIconHidden) "显示应用图标" else "隐藏应用图标") },
                             onClick = {
@@ -477,7 +533,8 @@ fun MainScreen(
                                 showMenu = false
                             }
                         )
-                        // 2. 查看抓包
+
+                        // 7. 查看抓包
                         DropdownMenuItem(
                             text = { Text("查看抓包") },
                             onClick = {
@@ -485,7 +542,8 @@ fun MainScreen(
                                 showMenu = false
                             }
                         )
-                        // 3. 扩展功能
+
+                        // 8. 扩展功能
                         DropdownMenuItem(
                             text = { Text("扩展功能") },
                             onClick = {
@@ -493,7 +551,8 @@ fun MainScreen(
                                 showMenu = false
                             }
                         )
-                        // 4. 清除配置 (仅 Debug 模式显示)
+
+                        // 9. 清除配置 (仅 Debug 模式显示)
                         if (BuildConfig.DEBUG) {
                             DropdownMenuItem(
                                 text = { Text("清除配置") },
@@ -557,10 +616,18 @@ fun MainScreen(
                         .heightIn(min = 130.dp)
                         .padding(8.dp)
                         .clip(RoundedCornerShape(8.dp)) // 点击水波纹圆角
-                        .clickable(
-                            // 只有不在加载时才允许点击
+                        .combinedClickable(
                             enabled = !isOneWordLoading,
-                            onClick = { onEvent(MainActivity.MainUiEvent.RefreshOneWord) }
+                            onClick = {
+                                // 短按：刷新一言
+                                onEvent(MainActivity.MainUiEvent.RefreshOneWord)
+                            },
+                            onLongClick = {
+                                // 长按：打开 Debug 日志
+                                onEvent(MainActivity.MainUiEvent.OpenDebugLog)
+                                // 可选：给个震动反馈或 Toast 提示
+                                ToastUtil.showToast(context, "准备起飞🛫")
+                            }
                         )
                         .padding(8.dp) // 内部留白
                 ) {

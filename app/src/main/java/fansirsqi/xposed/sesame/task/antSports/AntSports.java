@@ -58,6 +58,7 @@ public class AntSports extends ModelTask {
     private ChoiceModelField battleForFriendType;
     private SelectModelField originBossIdList;
     private BooleanModelField sportsTasks;
+    private BooleanModelField sportsEnergyBubble;
 
     // 训练好友相关变量
     private BooleanModelField trainFriend;
@@ -98,6 +99,7 @@ public class AntSports extends ModelTask {
         modelFields.addField(walkCustomPathId = new StringModelField("walkCustomPathId", "行走路线 | 自定义路线代码(debug)", "p0002023122214520001"));
         modelFields.addField(openTreasureBox = new BooleanModelField("openTreasureBox", "开启宝箱", false));
         modelFields.addField(sportsTasks = new BooleanModelField("sportsTasks", "开启运动任务", false));
+        modelFields.addField(sportsEnergyBubble = new BooleanModelField("sportsEnergyBubble", "运动球任务(开启后有概率出现滑块验证)", false));
         //干就完了，都能做  modelFields.addField(sportsTaskBlacklist = new StringModelField("sportsTaskBlacklist", "运动任务黑名单 | 任务名称(用,分隔)", "开通包裹查询服务,添加支付宝小组件,领取价值1.7万元配置,支付宝积分可兑券"));
         modelFields.addField(receiveCoinAsset = new BooleanModelField("receiveCoinAsset", "收能量🎈", false));
         modelFields.addField(donateCharityCoin = new BooleanModelField("donateCharityCoin", "捐能量🎈 | 开启", false));
@@ -209,7 +211,9 @@ public class AntSports extends ModelTask {
             }
 
             // 运动球任务
-            sportsEnergyBubbleTask();
+            if (sportsEnergyBubble.getValue()) {
+                sportsEnergyBubbleTask();
+            }
 
             ClassLoader loader = ApplicationHook.getClassLoader();
 
@@ -296,7 +300,10 @@ public class AntSports extends ModelTask {
                     if (taskType.equals("SETTLEMENT")) {
                         continue;
                     }
-
+                    // 检查任务是否在黑名单中
+                    if (TaskBlacklist.INSTANCE.isTaskInBlacklist(taskId) || TaskBlacklist.INSTANCE.isTaskInBlacklist(taskName)) {
+                        continue;
+                    }
                     totalTasks++;
 
                     // 处理不同任务状态
@@ -358,7 +365,6 @@ public class AntSports extends ModelTask {
                 String errorMsg = resultData.optString("errorMsg", "未知错误");
                 String errorCode = resultData.optString("errorCode", "");
                 Log.error(TAG, "做任务得能量🎈[领取失败：" + taskName + "，错误：" + errorCode + " - " + errorMsg + "]");
-
                 // 不可重试的错误视为完成
                 if (!resultData.optBoolean("retryable", true) || "CAMP_TRIGGER_ERROR".equals(errorCode)) {
                     return true;
@@ -383,7 +389,6 @@ public class AntSports extends ModelTask {
                 //Log.record(TAG, "做任务得能量🎈[任务无需执行：" + taskName + "，已完成" + currentNum + "/" + limitConfigNum + "]");
                 return true;
             }
-
             // 如果需要签到,先执行签到
             if (needSignUp) {
                 if (!signUpForTask(taskId, taskName)) {
@@ -409,6 +414,11 @@ public class AntSports extends ModelTask {
                 } else {
                     String errorMsg = result.optString("errorMsg", "未知错误");
                     Log.error(TAG, "做任务得能量🎈[任务失败：" + taskName + "，错误：" + errorMsg + "]#(" + (i + 1) + "/" + remainingNum + ")");
+                    String errorCode = result.optString("errorCode", "");
+                    // 自动将失败的任务加入黑名单
+                    if (!errorCode.isEmpty()) {
+                        TaskBlacklist.INSTANCE.autoAddToBlacklist(taskId, taskName, errorCode);
+                    }
                     break;
                 }
 
@@ -472,7 +482,6 @@ public class AntSports extends ModelTask {
                 if (bubble == null) {
                     continue;
                 }
-
                 // 只处理有 channel 字段的记录（广告任务），引导/订阅等不处理
                 String id=bubble.optString("id");
                 String taskId = bubble.optString("channel", "");
@@ -480,10 +489,8 @@ public class AntSports extends ModelTask {
                     continue;
                 }
                 if(TaskBlacklist.INSTANCE.isTaskInBlacklist(id)) continue;
-
                 String sourceName = bubble.optString("simpleSourceName", "");
                 int coinAmount = bubble.optInt("coinAmount", 0);
-
                 Log.record(TAG, "运动首页任务[开始完成：" + sourceName + "，taskId=" + taskId + "，coin=" + coinAmount + "]");
 
                 JSONObject completeRes = new JSONObject(AntSportsRpcCall.completeExerciseTasks(taskId));
@@ -506,16 +513,13 @@ public class AntSports extends ModelTask {
                         TaskBlacklist.INSTANCE.addToBlacklist(id,sourceName);
                     }
                 }
-
                 // 每处理一个任务随机休息 1-3 秒
                 int sleepMs = RandomUtil.nextInt(10000, 30000);
                 sleepCompat(sleepMs);
             }
-
             if (hasCompletedTask) {  // 先判断是否有完成任务
                 String result = AntSportsRpcCall.pickBubbleTaskEnergy();
                 JSONObject resultJson = new JSONObject(result);
-
                 if (ResChecker.checkRes(TAG,resultJson)) {
                     JSONObject dataObj = resultJson.optJSONObject("data");
                     if (dataObj != null) {
@@ -930,13 +934,13 @@ public class AntSports extends ModelTask {
             String boxNo = jo.getString("boxNo");
             String userId = jo.getString("userId");
             if (canOpenTime.equals(issueTime)) {
-                openTreasureBox(loader, boxNo, userId);
+                openTreasureBox(boxNo, userId);
             } else {
                 long cot = Long.parseLong(canOpenTime);
                 long now = Long.parseLong(rankCacheKey);
                 long delay = cot - now;
                 if (delay <= 0) {
-                    openTreasureBox(loader, boxNo, userId);
+                    openTreasureBox(boxNo, userId);
                     return;
                 }
                 if (delay < BaseModel.Companion.getCheckInterval().getValue()) {
@@ -949,7 +953,7 @@ public class AntSports extends ModelTask {
                         Log.record(TAG, "蹲点开箱开始");
                         long startTime = System.currentTimeMillis();
                         while (System.currentTimeMillis() - startTime < 5_000) {
-                            if (openTreasureBox(loader, boxNo, userId) > 0) {
+                            if (openTreasureBox(boxNo, userId) > 0) {
                                 break;
                             }
                             sleepCompat(200);
@@ -962,7 +966,7 @@ public class AntSports extends ModelTask {
         }
     }
 
-    private int openTreasureBox(ClassLoader loader, String boxNo, String userId) {
+    private int openTreasureBox(String boxNo, String userId) {
         try {
             String s = AntSportsRpcCall.openTreasureBox(boxNo, userId);
             JSONObject jo = new JSONObject(s);

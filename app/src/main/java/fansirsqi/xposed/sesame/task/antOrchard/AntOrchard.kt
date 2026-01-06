@@ -92,7 +92,7 @@ class AntOrchard : ModelTask() {
 
             if (!indexJson.optBoolean("userOpenOrchard", false)) {
                 enableField.value = false
-                Log.other("请先开启芭芭农场！")
+                Log.farm("请先开启芭芭农场！")
                 return
             }
 
@@ -568,7 +568,7 @@ class AntOrchard : ModelTask() {
 
             // 遍历所有奖励来源
             for ((diversionSource, source) in awardSources) {
-               // Log.debug(TAG, "尝试领取回访奖励: diversionSource=$diversionSource, source=$source")
+                // Log.debug(TAG, "尝试领取回访奖励: diversionSource=$diversionSource, source=$source")
 
                 val response = AntOrchardRpcCall.receiveOrchardVisitAward(diversionSource, source)
                 val jo = JSONObject(response)
@@ -607,6 +607,7 @@ class AntOrchard : ModelTask() {
             Log.printStackTrace(TAG, "receiveOrchardVisitAward err:", t)
         }
     }
+
     //限时奖励
     private fun limitedTimeChallenge() {
         try {
@@ -732,15 +733,14 @@ class AntOrchard : ModelTask() {
                             repeat(need) { index ->
                                 val wua = SecurityBodyHelper.getSecurityBodyData(4).toString()
                                 val spreadResult = AntOrchardRpcCall.orchardSpreadManure(wua, "ch_appcenter__chsub_9patch")
-                                Log.record(TAG, "施肥第 ${index + 1} 次结果：$spreadResult")
-
                                 val resultJson = JSONObject(spreadResult)
                                 val resultCode = resultJson.optString("resultCode", "")
                                 val resultDesc = resultJson.optString("resultDesc", "")
-
                                 if (resultCode != "100") {
                                     Log.error(TAG, "农场 orchardSpreadManure 错误：$resultDesc")
                                     return   // ❗施肥失败直接退出整个 limitedTimeChallenge()
+                                } else {
+                                    Log.record(TAG, "施肥第 ${index + 1} 次结果：$resultDesc")
                                 }
                             }
 

@@ -59,7 +59,7 @@ object Log {
     @JvmStatic
     fun record(msg: String) {
         if (BaseModel.recordLog.value == true) {
-            RECORD_LOGGER.debug("$DEFAULT_TAG{}", msg)
+            RECORD_LOGGER.info("$DEFAULT_TAG{}", msg)
         }
     }
 
@@ -87,7 +87,6 @@ object Log {
 
     @JvmStatic
     fun other(msg: String) {
-        record(msg)
         OTHER_LOGGER.debug("{}", msg)
     }
 
@@ -111,7 +110,6 @@ object Log {
 
     @JvmStatic
     fun error(msg: String) {
-        record(msg)
         ERROR_LOGGER.error("$DEFAULT_TAG{}", msg)
     }
 
@@ -128,6 +126,22 @@ object Log {
     @JvmStatic
     fun capture(tag: String, msg: String) {
         capture("[$tag]: $msg")
+    }
+
+    fun d(tag: String, msg: String) {
+        DEBUG_LOGGER.debug("[$tag]: $msg")
+    }
+
+    fun i(tag: String, msg: String) {
+        RECORD_LOGGER.info("[$tag]: $msg")
+    }
+
+    fun w(tag: String, msg: String) {
+        RECORD_LOGGER.warn("[$tag]: $msg")
+    }
+
+    fun e(tag: String, msg: String, th: Throwable?=null) {
+        ERROR_LOGGER.error("[$tag]: $msg ${android.util.Log.getStackTraceString(th)}")
     }
 
 
