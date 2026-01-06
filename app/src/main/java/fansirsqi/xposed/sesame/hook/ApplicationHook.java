@@ -497,7 +497,7 @@ public class ApplicationHook {
             XposedHelpers.findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    // mainHandler = new Handler(Looper.getMainLooper());
+                    mainHandler = new Handler(Looper.getMainLooper());
                     appContext = (Context) param.args[0];
                     //LOG日志的初始化
                     Log.init(appContext);
