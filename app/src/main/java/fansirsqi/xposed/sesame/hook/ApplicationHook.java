@@ -249,8 +249,13 @@ public class ApplicationHook {
             int checkInterval = BaseModel.Companion.getCheckInterval().getValue();
             List<String> execAtTimeList = BaseModel.Companion.getExecAtTimeList().getValue();
             if (execAtTimeList != null && execAtTimeList.contains("-1")) {
-                Log.record(TAG, "定时执行未开启,["+checkInterval/60000+"]分钟执行一次！");
-                SchedulerAdapter.scheduleDelayedExecution(checkInterval);
+                Log.record(TAG, "定时执行未开启!");
+                // // 这里的 Lambda 会在 delayMillis 毫秒后被执行，期间持有 WakeLock
+                // SmartSchedulerManager.INSTANCE.schedule(checkInterval, "轮询任务", () -> {
+                //     // 触发执行逻辑
+                //     execHandler();
+                //     return Unit.INSTANCE;
+                // });
                 return;
             }
 
