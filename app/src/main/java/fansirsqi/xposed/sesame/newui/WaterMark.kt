@@ -64,7 +64,8 @@ fun WatermarkLayer(
             "Ver: ${BuildConfig.VERSION_NAME}.${BuildConfig.VERSION_CODE}",
             "Build: ${BuildConfig.BUILD_DATE}",
         )
-        listOf("")
+        //listOf("")
+        prefixLines + uidLines + listOf(suffix) + versionLines
         
     }
 
@@ -73,7 +74,6 @@ fun WatermarkLayer(
 
     Box(
         modifier = modifier.drawWithCache {
-            return
             // ... (Paint 和 draw 逻辑保持不变，完全不需要改动) ...
             val paint = Paint().apply {
                 color = textColor
