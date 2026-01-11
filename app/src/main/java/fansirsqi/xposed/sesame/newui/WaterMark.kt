@@ -32,6 +32,12 @@ fun WatermarkLayer(
     refreshTrigger: Any? = null,
     content: @Composable () -> Unit
 ) {
+    val enableWatermark = false
+    if (!enableWatermark) {
+        // 只渲染原始内容，不加水印
+        content()
+        return
+    }
     val density = LocalDensity.current
     val textSizePx = with(density) { 13.sp.toPx() }
     val textColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f).toArgb()
