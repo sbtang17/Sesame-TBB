@@ -32,6 +32,7 @@ fun WatermarkLayer(
     refreshTrigger: Any? = null,
     content: @Composable () -> Unit
 ) {
+    return
     val density = LocalDensity.current
     val textSizePx = with(density) { 13.sp.toPx() }
     val textColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f).toArgb()
@@ -71,19 +72,9 @@ fun WatermarkLayer(
     val offsetX = remember { Random.nextInt(-200, 200).toFloat() }
     val offsetY = remember { Random.nextInt(-200, 200).toFloat() }
 
-    // 4. 使用 Box 布局：内容在下，水印在上
-    androidx.compose.foundation.layout.Box(modifier = modifier) {
-        // A. 实际的 UI 内容
-        content()
-
-        // B. 水印覆盖层 (不拦截点击事件)
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val enableWatermark = false
-            if (!enableWatermark) return@Canvas
-            val width = size.width
-            val height = size.height
-
-            // 配置画笔
+    Box(
+        modifier = modifier.drawWithCache {
+            // ... (Paint 和 draw 逻辑保持不变，完全不需要改动) ...
             val paint = Paint().apply {
                 color = textColor
                 textSize = textSizePx
