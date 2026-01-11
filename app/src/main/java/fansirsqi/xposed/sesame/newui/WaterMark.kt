@@ -32,7 +32,6 @@ fun WatermarkLayer(
     refreshTrigger: Any? = null,
     content: @Composable () -> Unit
 ) {
-    return
     val density = LocalDensity.current
     val textSizePx = with(density) { 13.sp.toPx() }
     val textColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f).toArgb()
@@ -74,6 +73,7 @@ fun WatermarkLayer(
 
     Box(
         modifier = modifier.drawWithCache {
+            return
             // ... (Paint 和 draw 逻辑保持不变，完全不需要改动) ...
             val paint = Paint().apply {
                 color = textColor
