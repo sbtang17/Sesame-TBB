@@ -73,7 +73,6 @@ fun WatermarkLayer(
 
     Box(
         modifier = modifier.drawWithCache {
-            return
             // ... (Paint 和 draw 逻辑保持不变，完全不需要改动) ...
             val paint = Paint().apply {
                 color = textColor
@@ -95,6 +94,7 @@ fun WatermarkLayer(
                 drawContent()
                 drawContext.canvas.nativeCanvas.apply {
                     withSave {
+                        return
                         val width = size.width
                         val height = size.height
                         rotate(rotationDegrees, width / 2, height / 2)
