@@ -94,7 +94,6 @@ fun WatermarkLayer(
                 drawContent()
                 drawContext.canvas.nativeCanvas.apply {
                     withSave {
-                        return
                         val width = size.width
                         val height = size.height
                         rotate(rotationDegrees, width / 2, height / 2)
