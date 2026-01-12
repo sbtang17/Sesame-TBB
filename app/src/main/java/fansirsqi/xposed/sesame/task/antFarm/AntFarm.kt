@@ -591,27 +591,6 @@ class AntFarm : ModelTask() {
         addIntervalLimit("com.alipay.antfarm.enterFarm", 2000)
     }
 
-    override fun check(): Boolean {
-        if (TaskCommon.IS_ENERGY_TIME) {
-            Log.record(
-                TAG,
-                "⏸ 当前为只收能量时间【" + BaseModel.energyTime
-                    .value + "】，停止执行" + name + "任务！"
-            )
-            return false
-        } else if (TaskCommon.IS_MODULE_SLEEP_TIME) {
-            Log.record(
-                TAG,
-                "💤 模块休眠时间【" + BaseModel.modelSleepTime
-                    .value + "】停止执行" + name + "任务！"
-            )
-            return false
-        } else {
-            return true
-        }
-    }
-
-
     override suspend fun runSuspend() {
         try {
             val tc = TimeCounter(TAG)
@@ -1838,7 +1817,7 @@ class AntFarm : ModelTask() {
                     break
                 }
 
-                val remainingCount = joInit.optInt("remainingGameCount", 0)
+                val remainingCount = joInit.optInt("remainingGameCount", 1)
                 if (remainingCount > 0) {
                     val recordResult = AntFarmRpcCall.recordFarmGame(gameType.name)
                     val joRecord = JSONObject(recordResult)
@@ -2519,12 +2498,11 @@ class AntFarm : ModelTask() {
                              */
                             // 判断游戏改分还没完成。按照我的设计，其实这里不用判断，因为任务顺序就是先加速->游戏改分
                             if (!Status.hasFlagToday("farm::farmGameFinished")){
-                                // 饲料量比上限少超过了180g则领取饲料，在180g内则不领，留给飞行赛填补
-                                if (foodStock < foodStockLimit - 180) {
+                                if (foodStock < foodStockLimit - gameRewardMax!!.value) {
                                     Log.farm("加速后已喂食，领取饲料奖励")
                                     receiveFarmAwards()
                                 } else {
-                                    Log.farm("今天游戏改分还没有完成，预留180g的饲料剩余空间，目前饲料${foodStock}g，还差${foodStockLimit - foodStock}g满饲料")
+                                    Log.farm("今天游戏改分还没有完成，预留${gameRewardMax!!.value}g的饲料剩余空间，目前饲料${foodStock}g，差${foodStockLimit - foodStock}g满饲料")
                                 }
                             } else {
                                 Log.farm("加速后已喂食，领取饲料奖励")

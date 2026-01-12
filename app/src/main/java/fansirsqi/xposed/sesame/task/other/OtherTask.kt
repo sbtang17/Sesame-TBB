@@ -17,11 +17,6 @@ class OtherTask : ModelTask() {
         return ModelGroup.OTHER
     }
 
-
-    override fun check(): Boolean {
-        return true
-    }
-
     override fun getIcon(): String {
         return ""
     }
