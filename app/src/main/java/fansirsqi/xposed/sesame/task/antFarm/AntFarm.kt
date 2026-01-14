@@ -13,7 +13,6 @@ import fansirsqi.xposed.sesame.entity.OtherEntityProvider.farmFamilyOption
 import fansirsqi.xposed.sesame.entity.ParadiseCoinBenefit
 import fansirsqi.xposed.sesame.hook.Toast
 import fansirsqi.xposed.sesame.hook.rpc.intervallimit.RpcIntervalLimit.addIntervalLimit
-import fansirsqi.xposed.sesame.model.BaseModel
 import fansirsqi.xposed.sesame.model.ModelFields
 import fansirsqi.xposed.sesame.model.ModelGroup
 import fansirsqi.xposed.sesame.model.modelFieldExt.BooleanModelField
@@ -27,7 +26,6 @@ import fansirsqi.xposed.sesame.newutil.DataStore
 import fansirsqi.xposed.sesame.newutil.TaskBlacklist
 import fansirsqi.xposed.sesame.task.AnswerAI.AnswerAI
 import fansirsqi.xposed.sesame.task.ModelTask
-import fansirsqi.xposed.sesame.task.TaskCommon
 import fansirsqi.xposed.sesame.task.antFarm.AntFarmFamily.familyClaimRewardList
 import fansirsqi.xposed.sesame.task.antFarm.AntFarmFamily.familySign
 import fansirsqi.xposed.sesame.task.antForest.TaskTimeChecker
@@ -56,6 +54,7 @@ import java.util.Locale
 import java.util.Objects
 import java.util.Random
 import kotlin.math.min
+
 @Suppress("unused", "EnumEntryName", "EnumEntryName", "EnumEntryName", "EnumEntryName")
 class AntFarm : ModelTask() {
     private var ownerFarmId: String? = null
@@ -1102,6 +1101,23 @@ class AntFarm : ModelTask() {
      * 自动喂鸡
      */
     private suspend fun handleAutoFeedAnimal(isChildTask: Boolean = false) {
+
+//        val sleepTimeStr = sleepTime!!.value
+//        if (sleepTimeStr != "-1") {
+//            val now = TimeUtil.getNow()
+//            val sleepCal = TimeUtil.getTodayCalendarByTimeStr(sleepTimeStr)
+//            // 如果当前时间在睡觉时间之前，且差距小于 30 分钟
+//            if (now.before(sleepCal) && (sleepCal.timeInMillis - now.timeInMillis) < 30 * 60 * 1000) {
+//                Log.record(TAG, "马上要睡觉了，暂不投喂，让它饿着吧")
+//                return
+//            }
+//            // 如果已经过了睡觉时间，理论上也不应该喂，但原逻辑会在后面 animalSleepAndWake 处理睡觉
+//            if (now.after(sleepCal)) {
+//                Log.record(TAG, "已过睡觉时间，暂不投喂")
+//                return
+//            }
+//        }
+
         if (AnimalInteractStatus.HOME.name != ownerAnimal.animalInteractStatus) {
             return  // 小鸡不在家，不执行喂养逻辑
         }
