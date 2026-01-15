@@ -39,7 +39,7 @@ object SecurityBodyHelper {
             }
 
             // 使用 appContext 作为上下文
-            val appContext = ApplicationHook.getAppContext()
+            val appContext = ApplicationHook.appContext
             if (appContext == null) {
                 Log.error(TAG, "appContext 为 null，可能应用还未完全启动，请稍后再试")
                 return null

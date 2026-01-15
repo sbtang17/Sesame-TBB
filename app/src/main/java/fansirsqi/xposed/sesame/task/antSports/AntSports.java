@@ -15,7 +15,7 @@ import fansirsqi.xposed.sesame.data.StatusFlags;
 import fansirsqi.xposed.sesame.entity.AlipayUser;
 import fansirsqi.xposed.sesame.hook.ApplicationHook;
 import fansirsqi.xposed.sesame.model.BaseModel;
-import fansirsqi.xposed.sesame.newutil.DataStore;
+import fansirsqi.xposed.sesame.util.DataStore;
 import fansirsqi.xposed.sesame.model.ModelFields;
 import fansirsqi.xposed.sesame.model.ModelGroup;
 import fansirsqi.xposed.sesame.model.modelFieldExt.BooleanModelField;
@@ -23,7 +23,7 @@ import fansirsqi.xposed.sesame.model.modelFieldExt.ChoiceModelField;
 import fansirsqi.xposed.sesame.model.modelFieldExt.IntegerModelField;
 import fansirsqi.xposed.sesame.model.modelFieldExt.SelectModelField;
 import fansirsqi.xposed.sesame.model.modelFieldExt.StringModelField;
-import fansirsqi.xposed.sesame.newutil.TaskBlacklist;
+import fansirsqi.xposed.sesame.util.TaskBlacklist;
 import fansirsqi.xposed.sesame.task.ModelTask;
 import fansirsqi.xposed.sesame.task.TaskCommon;
 import fansirsqi.xposed.sesame.util.Log;
@@ -167,7 +167,7 @@ public class AntSports extends ModelTask {
                 addChildTask(new ChildModelTask("syncStep", () -> {
                     int step = tmpStepCount();
                     try {
-                        ClassLoader classLoader = ApplicationHook.getClassLoader();
+                        ClassLoader classLoader = ApplicationHook.classLoader;
                         Object rpcManager = XposedHelpers.callStaticMethod(
                                 classLoader.loadClass("com.alibaba.health.pedometer.intergation.rpc.RpcManager"),
                                 "a"
@@ -202,7 +202,7 @@ public class AntSports extends ModelTask {
                 sportsEnergyBubbleTask();
             }
 
-            ClassLoader loader = ApplicationHook.getClassLoader();
+            ClassLoader loader = ApplicationHook.classLoader;
 
             if (walk.getValue()) {
                 getWalkPathThemeIdOnConfig();

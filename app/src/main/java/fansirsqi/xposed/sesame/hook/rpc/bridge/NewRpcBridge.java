@@ -79,7 +79,7 @@ public class NewRpcBridge implements RpcBridge {
 
     @Override
     public void load() throws Exception {
-        loader = ApplicationHook.getClassLoader();
+        loader = ApplicationHook.classLoader;
         try {
             Object service = XposedHelpers.callStaticMethod(XposedHelpers.findClass("com.alipay.mobile.nebulacore.Nebula", loader), "getService");
             Object extensionManager = XposedHelpers.callMethod(service, "getExtensionManager");
@@ -190,7 +190,7 @@ public class NewRpcBridge implements RpcBridge {
         ClassLoader localLoader = loader;
         Class<?>[] localBridgeCallbackClazzArray = bridgeCallbackClazzArray;
 
-        if (ApplicationHook.isOffline()) {
+        if (ApplicationHook.offline) {
             return null;
         }
 
@@ -291,8 +291,14 @@ public class NewRpcBridge implements RpcBridge {
                         String response = rpcEntity.getResponseString();
                         String methodName = rpcEntity.getRequestMethod();
 
-                        // 检测安全验证错误，自动启动支付宝（带防抖）
+                        // 检测安全验证错误，自动启动支付宝（带防抖和版本检查）
+
                         if (errorMessage != null && errorMessage.contains("为了保障您的操作安全，请进行验证后继续")) {
+                            // 检查版本号，只有版本低于等于10.6.58.99999才自动启动支付宝
+                            if (!ApplicationHook.shouldEnableSimplePageManager()) {
+                              //  Log.record(TAG, "支付宝版本不支持自动启动支付宝进行滑块验证，跳过");
+                                return null;
+                            }
                             long currentTime = System.currentTimeMillis();
                             long timeSinceLastStart = currentTime - lastAlipayStartTime;
                             if (timeSinceLastStart < ALIPAY_START_DEBOUNCE_TIME) {
@@ -311,7 +317,7 @@ public class NewRpcBridge implements RpcBridge {
                                                 "为了保障您的操作安全，请进行验证后继续,自动启动支付宝进行滑块中..."
                                         );
                                         // 使用增强的shell命令启动支付宝，
-                                        SwipeUtil.startAlipay(ApplicationHook.getAppContext());
+                                        SwipeUtil.startAlipay(ApplicationHook.appContext);
                                     }
                                 }
                             }
@@ -320,7 +326,7 @@ public class NewRpcBridge implements RpcBridge {
 
                         if (errorMark.contains(errorCode) || errorStringMark.contains(errorMessage)) {
                             int currentErrorCount = maxErrorCount.incrementAndGet();
-                            if (!ApplicationHook.isOffline()) {
+                            if (!ApplicationHook.offline) {
                                 if (currentErrorCount > setMaxErrorCount) {
                                     ApplicationHook.setOffline(true);
                                     Notify.updateStatusText("网络连接异常，已进入离线模式");

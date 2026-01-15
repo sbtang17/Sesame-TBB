@@ -10,9 +10,8 @@ import fansirsqi.xposed.sesame.model.ModelGroup
 import fansirsqi.xposed.sesame.model.modelFieldExt.BooleanModelField
 import fansirsqi.xposed.sesame.model.modelFieldExt.IntegerModelField
 import fansirsqi.xposed.sesame.model.modelFieldExt.SelectModelField
-import fansirsqi.xposed.sesame.newutil.TaskBlacklist
+import fansirsqi.xposed.sesame.util.TaskBlacklist
 import fansirsqi.xposed.sesame.task.ModelTask
-import fansirsqi.xposed.sesame.task.TaskCommon
 import fansirsqi.xposed.sesame.util.CoroutineUtils
 import fansirsqi.xposed.sesame.util.Log
 import fansirsqi.xposed.sesame.util.Notify

@@ -12,21 +12,19 @@ import fansirsqi.xposed.sesame.entity.MemberBenefit
 import fansirsqi.xposed.sesame.entity.SesameGift
 import fansirsqi.xposed.sesame.hook.internal.LocationHelper.requestLocationSuspend
 import fansirsqi.xposed.sesame.hook.internal.SecurityBodyHelper.getSecurityBodyData
-import fansirsqi.xposed.sesame.model.BaseModel.Companion.energyTime
-import fansirsqi.xposed.sesame.model.BaseModel.Companion.modelSleepTime
 import fansirsqi.xposed.sesame.model.ModelFields
 import fansirsqi.xposed.sesame.model.ModelGroup
 import fansirsqi.xposed.sesame.model.modelFieldExt.BooleanModelField
 import fansirsqi.xposed.sesame.model.modelFieldExt.SelectModelField
-import fansirsqi.xposed.sesame.newutil.TaskBlacklist.autoAddToBlacklist
+import fansirsqi.xposed.sesame.util.TaskBlacklist.autoAddToBlacklist
 import fansirsqi.xposed.sesame.task.ModelTask
-import fansirsqi.xposed.sesame.task.TaskCommon
 import fansirsqi.xposed.sesame.task.antOrchard.AntOrchardRpcCall.orchardSpreadManure
 import fansirsqi.xposed.sesame.util.CoroutineUtils
 import fansirsqi.xposed.sesame.util.GlobalThreadPools
 import fansirsqi.xposed.sesame.util.Log
 import fansirsqi.xposed.sesame.util.Log.record
 import fansirsqi.xposed.sesame.util.ResChecker
+import fansirsqi.xposed.sesame.util.TaskBlacklist
 import fansirsqi.xposed.sesame.util.TimeUtil
 import fansirsqi.xposed.sesame.util.maps.IdMapManager
 import fansirsqi.xposed.sesame.util.maps.MemberBenefitsMap
@@ -2679,7 +2677,7 @@ class AntMember : ModelTask() {
          * @return true表示在黑名单中，应该跳过
          */
         private fun isTaskInBlacklist(taskTitle: String?): Boolean {
-            return fansirsqi.xposed.sesame.newutil.TaskBlacklist.isTaskInBlacklist(taskTitle)
+            return TaskBlacklist.isTaskInBlacklist(taskTitle)
         }
 
         /**

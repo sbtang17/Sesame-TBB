@@ -6,9 +6,9 @@ import fansirsqi.xposed.sesame.data.Status
 import fansirsqi.xposed.sesame.data.StatusFlags
 import fansirsqi.xposed.sesame.hook.internal.LocationHelper
 import fansirsqi.xposed.sesame.model.modelFieldExt.SelectAndCountModelField
-import fansirsqi.xposed.sesame.newutil.DataStore
-import fansirsqi.xposed.sesame.newutil.TaskBlacklist.autoAddToBlacklist
-import fansirsqi.xposed.sesame.newutil.TaskBlacklist.isTaskInBlacklist
+import fansirsqi.xposed.sesame.util.DataStore
+import fansirsqi.xposed.sesame.util.TaskBlacklist.autoAddToBlacklist
+import fansirsqi.xposed.sesame.util.TaskBlacklist.isTaskInBlacklist
 import fansirsqi.xposed.sesame.util.GlobalThreadPools
 import fansirsqi.xposed.sesame.util.Log
 import fansirsqi.xposed.sesame.util.ResChecker

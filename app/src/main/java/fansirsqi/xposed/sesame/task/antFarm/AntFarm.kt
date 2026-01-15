@@ -22,8 +22,8 @@ import fansirsqi.xposed.sesame.model.modelFieldExt.ListModelField.ListJoinCommaT
 import fansirsqi.xposed.sesame.model.modelFieldExt.SelectAndCountModelField
 import fansirsqi.xposed.sesame.model.modelFieldExt.SelectModelField
 import fansirsqi.xposed.sesame.model.modelFieldExt.StringModelField
-import fansirsqi.xposed.sesame.newutil.DataStore
-import fansirsqi.xposed.sesame.newutil.TaskBlacklist
+import fansirsqi.xposed.sesame.util.DataStore
+import fansirsqi.xposed.sesame.util.TaskBlacklist
 import fansirsqi.xposed.sesame.task.AnswerAI.AnswerAI
 import fansirsqi.xposed.sesame.task.ModelTask
 import fansirsqi.xposed.sesame.task.antFarm.AntFarmFamily.familyClaimRewardList
