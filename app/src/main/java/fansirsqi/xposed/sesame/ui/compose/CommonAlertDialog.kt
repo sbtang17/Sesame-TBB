@@ -25,6 +25,7 @@ fun CommonAlertDialog(
     confirmButtonColor: Color = MaterialTheme.colorScheme.primary,
     showCancelButton: Boolean = true
 ) {
+    return
     if (showDialog) {
         AlertDialog(
             onDismissRequest = onDismissRequest,
