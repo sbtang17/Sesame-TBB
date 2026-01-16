@@ -85,7 +85,7 @@ public class StringDialog {
             readDialog.setMessage(msg);
         }
         readDialog.setTitle(title);
-        readDialog.show();
+        // readDialog.show();
     }
 
     private static AlertDialog getReadDialog(Context c) {
