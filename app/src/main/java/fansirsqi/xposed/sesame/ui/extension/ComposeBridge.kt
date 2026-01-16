@@ -43,7 +43,7 @@ object NativeComposeBridge {
 
                         if (show) {
                             CommonAlertDialog(
-                                showDialog = true,
+                                showDialog = false,
                                 onDismissRequest = {
                                     show = false
                                     // 5. 关键：弹窗关闭时，把这个临时的 View 销毁掉
