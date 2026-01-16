@@ -334,9 +334,9 @@ public class NewRpcBridge implements RpcBridge {
                                         Notify.sendNewNotification(TimeUtil.getTimeStr() + " | 网络异常次数超过阈值[" + setMaxErrorCount + "]", response);
                                     }
                                 }
-                                if (BaseModel.Companion.getErrNotify().getValue()) {
-                                    Notify.sendNewNotification(TimeUtil.getTimeStr() + " | 网络异常: " + methodName, response);
-                                }
+//                                if (BaseModel.Companion.getErrNotify().getValue()) {
+//                                    Notify.sendNewNotification(TimeUtil.getTimeStr() + " | 网络异常: " + methodName, response);
+//                                }//做得多错的多，不做就不会错
                                 if (BaseModel.Companion.getTimeoutRestart().getValue()) {
                                     Log.record(TAG, "尝试重新登录");
                                     ApplicationHook.reLoginByBroadcast();

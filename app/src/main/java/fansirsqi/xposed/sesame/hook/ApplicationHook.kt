@@ -475,7 +475,7 @@ class ApplicationHook {
         private var rpcVersion: RpcVersion? = null
 
         @Volatile
-        private var lastExecTime: Long = 0
+        var lastExecTime: Long = 0
 
         @Volatile
         var nextExecutionTime: Long = 0
@@ -517,7 +517,6 @@ class ApplicationHook {
 
                     lastExecTime = currentTime
                     TaskRunnerAdapter().run()
-                    scheduleNextExecutionInternal(lastExecTime)
                 }
             } catch (e: IllegalStateException) {
                 record(TAG, "⚠️ " + e.message)
@@ -543,29 +542,19 @@ class ApplicationHook {
             }
         }
 
-        // --- 调度与执行 ---
-        @JvmStatic
-        fun scheduleNextExecution() {
-            scheduleNextExecutionInternal(lastExecTime)
-        }
 
-        private fun scheduleNextExecutionInternal(lastTime: Long) {
+
+        fun scheduleNextExecutionInternal(lastTime: Long) {
             try {
                 checkInactiveTime()
                 val checkInterval = checkInterval.value
                 val execAtTimeList = execAtTimeList.value
-
                 if (execAtTimeList != null && execAtTimeList.contains("-1")) {
                     record(TAG, "定时执行未开启")
                     return
                 }
-
                 var delayMillis = checkInterval.toLong()
                 var targetTime: Long = 0
-
-                // ... (计算 delayMillis 逻辑保持不变) ...
-
-                // 计算逻辑简化省略，保持原逻辑
                 if (execAtTimeList != null) {
                     val lastCal = TimeUtil.getCalendarByTimeMillis(lastTime)
                     val nextCal = TimeUtil.getCalendarByTimeMillis(lastTime + checkInterval)
@@ -579,10 +568,8 @@ class ApplicationHook {
                         }
                     }
                 }
-
                 nextExecutionTime = if (targetTime > 0) targetTime else (lastTime + delayMillis)
                 ensureScheduler()
-
                 schedule(delayMillis, "轮询任务") {
                     execHandler()
                 }

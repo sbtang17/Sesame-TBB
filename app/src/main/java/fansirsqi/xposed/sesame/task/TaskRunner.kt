@@ -192,7 +192,7 @@ class CoroutineTaskRunner(allModels: List<Model>) {
 
     private fun scheduleNext() {
         try {
-            ApplicationHook.scheduleNextExecution()
+            ApplicationHook.scheduleNextExecutionInternal(ApplicationHook.lastExecTime)
             Log.record(TAG, "📅 已调度下次执行")
         } catch (e: Exception) {
             Log.printStackTrace(TAG, "调度失败", e)

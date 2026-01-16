@@ -88,6 +88,7 @@ object DeviceInfoUtil {
             "ro.vendor.oplus.market.enname",//oplus
             "ro.vendor.oplus.market.name",//realme
             "ro.vivo.market.name",//vivo
+            "ro.config.marketing_name",//huawei/honor
             "ro.product.model",//兜底
         )
         for (prop in candidates) {

@@ -42,16 +42,32 @@ object TaskBlacklist {
     
     
     /**
-     * 检查任务是否在黑名单中（模糊匹配）
+     * 检查任务是否在黑名单中（精确匹配逻辑）
      * @param taskInfo 任务信息（可以是任务ID、任务标题或组合信息）
      * @return true表示在黑名单中，应该跳过
      */
     fun isTaskInBlacklist(taskInfo: String?): Boolean {
-        if (taskInfo == null) return false
+        if (taskInfo.isNullOrBlank()) return false
         
         val blacklist = getBlacklist()
-        return blacklist.any { blacklistItem -> 
-            taskInfo.contains(blacklistItem) || blacklistItem.contains(taskInfo)
+        return blacklist.any { item ->
+            if (item.isBlank()) return@any false
+
+            // 完全匹配（最精确）
+            if (taskInfo == item) return@any true
+
+            // 区分处理中文关键词和纯英文的匹配模式。
+            val itemHasChinese = item.any { it in '\u4e00'..'\u9fa5' }
+
+            if (itemHasChinese) {
+                // 包含中文的项维持双向模糊匹配逻辑
+                taskInfo.contains(item) || item.contains(taskInfo)
+            } else {
+                /* 纯英文/数字/符号项使用单向模糊匹配逻辑；防止黑名单中"TAOBAO"这类比较简短、通用的字段匹配到任务
+                    "TAOBAO_tab2gzy" ，导致不是在黑名单中的任务被跳过
+                 */
+                item.contains(taskInfo)
+            }
         }
     }
     

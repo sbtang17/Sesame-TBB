@@ -88,9 +88,11 @@ class MainActivity : ComponentActivity() {
                 derivedStateOf { userList.map { it.userId } }
             }
 
+            val isDynamicColor by viewModel.isDynamicColor.collectAsStateWithLifecycle()
+
 
             // AppTheme 会处理状态栏颜色
-            AppTheme {
+            AppTheme(dynamicColor = isDynamicColor) {
                 WatermarkLayer(
                     uidList = uidList
                 ) {
@@ -99,6 +101,8 @@ class MainActivity : ComponentActivity() {
                         activeUserName = activeUser?.showName ?: "未载入",
                         moduleStatus = moduleStatus,
                         viewModel = viewModel,
+                        isDynamicColor = isDynamicColor, // 传给 MainScreen
+                        // 传入回调
                         userList = userList, // 传入列表
                         // 🔥 处理跳转逻辑
                         onNavigateToSettings = { selectedUser ->

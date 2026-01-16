@@ -7,11 +7,11 @@ import fansirsqi.xposed.sesame.data.StatusFlags
 import fansirsqi.xposed.sesame.hook.internal.LocationHelper
 import fansirsqi.xposed.sesame.model.modelFieldExt.SelectAndCountModelField
 import fansirsqi.xposed.sesame.util.DataStore
-import fansirsqi.xposed.sesame.util.TaskBlacklist.autoAddToBlacklist
-import fansirsqi.xposed.sesame.util.TaskBlacklist.isTaskInBlacklist
 import fansirsqi.xposed.sesame.util.GlobalThreadPools
 import fansirsqi.xposed.sesame.util.Log
 import fansirsqi.xposed.sesame.util.ResChecker
+import fansirsqi.xposed.sesame.util.TaskBlacklist.autoAddToBlacklist
+import fansirsqi.xposed.sesame.util.TaskBlacklist.isTaskInBlacklist
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -1632,265 +1632,115 @@ object Credit2101 {
      * 处理黑色印记事件
      * @return 实际消耗的能量值
      */
-
-    /**
-     * 处理黑色印记事件
-     * @return EventResult 明确的状态结果
-     */
     private fun handleBlackMark(ev: JSONObject, availableEnergy: Int): EventResult {
-        val eventId = ev.optString("eventId", "")
+        val eventId = ev.optString("eventId")
         if (eventId.isEmpty()) {
             Log.error(TAG, "信用2101⚫[黑色印记] 事件ID为空")
             return EventResult.Failed
         }
 
+        // 定义常量，方便维护
+        val joinCost = 10
+        val maxUsers = 4
+
         try {
-            val resp = Credit2101RpcCall.queryBlackMarkEvent(eventId)
-            if (!ResChecker.checkRes(TAG, resp)) {
-                Log.error(TAG, "信用2101⚫[黑色印记查询失败]")
-                return EventResult.Failed
-            }
+            // --- 阶段 1: 初始查询与状态解析 ---
+            var resp = Credit2101RpcCall.queryBlackMarkEvent(eventId)
+            if (!ResChecker.checkRes(TAG, resp)) return EventResult.Failed
 
-            val jo = JSONObject(resp)
-            val assistantVO = jo.optJSONObject("assistantVO")
-            val userList = assistantVO?.optJSONArray("assistantUserInfoList")
-            val userCount = userList?.length() ?: 0
+            var jo = JSONObject(resp)
+            var assistantVO = jo.optJSONObject("assistantVO") ?: return EventResult.Failed
+            val userList = assistantVO.optJSONArray("assistantUserInfoList")
 
-            // 检查是否已加入
+            // 检查自己是否已在列表中
             var hasSelf = false
+            val userCount = userList?.length() ?: 0
             if (userList != null) {
                 for (i in 0 until userCount) {
-                    val u = userList.optJSONObject(i) ?: continue
-                    if (u.optBoolean("self", false)) {
+                    if (userList.optJSONObject(i)?.optBoolean("self") == true) {
                         hasSelf = true
                         break
                     }
                 }
             }
 
+            var currentEnergy = availableEnergy
             var usedEnergy = 0
 
-            // 情况1: 未加入,尝试加入
+            // --- 阶段 2: 尝试加入 ---
             if (!hasSelf) {
-                if (userCount >= 4) {
-                    Log.record(TAG, "信用2101⚫[黑色印记] 占位已满(4/4)")
+                // 2.1 检查前置条件
+                if (userCount >= maxUsers) {
+                    Log.record(TAG, "信用2101⚫[黑色印记] 占位已满($userCount/$maxUsers)")
                     return EventResult.Skipped
                 }
-                if (availableEnergy < 10) {
-                    Log.record(TAG, "信用2101⚫[黑色印记] 能量不足10")
+                if (currentEnergy < joinCost) {
+                    Log.record(TAG, "信用2101⚫[黑色印记] 加入需要能量$joinCost, 当前不足")
                     return EventResult.Skipped
                 }
 
-                val joinEnergy = 10
-                val joinResp = Credit2101RpcCall.joinBlackMarkEvent(joinEnergy, eventId)
-
+                // 2.2 执行加入
+                val joinResp = Credit2101RpcCall.joinBlackMarkEvent(joinCost, eventId)
                 if (!ResChecker.checkRes(TAG, joinResp)) {
                     Log.record(TAG, "信用2101⚫[加入失败] 可能已被填满或过期")
-                    return EventResult.Skipped  // 加入失败不算错误,可能是正常的竞争
+                    return EventResult.Skipped
                 }
 
-                usedEnergy += joinEnergy
-                Log.other("信用2101⚫[黑色印记] 成功加入,注入 $joinEnergy")
+                // 2.3 更新状态
+                usedEnergy += joinCost
+                currentEnergy -= joinCost
+                Log.other("信用2101⚫[黑色印记] 成功加入, 注入 $joinCost")
 
-                // 重新查询
-                val newResp = Credit2101RpcCall.queryBlackMarkEvent(eventId)
-                if (!ResChecker.checkRes(TAG, newResp)) {
-                    Log.error(TAG, "信用2101⚫[重新查询失败]")
-                    return EventResult.Success(usedEnergy)  // 已消耗能量,算成功
-                }
-
-                val newJo = JSONObject(newResp)
-                val newAssistantVO = newJo.optJSONObject("assistantVO")
-                    ?: return EventResult.Success(usedEnergy)
-
-                val curr = newAssistantVO.optInt("currAssistantCount", 0)
-                val total = newAssistantVO.optInt("totalAssistantCount", 0)
-
-                if (total == 0) {
-                    Log.error(TAG, "信用2101⚫[数据异常] 总能量为0")
+                // 2.4 重新查询最新状态（关键：加入后进度可能变了，或者已经完成了）
+                resp = Credit2101RpcCall.queryBlackMarkEvent(eventId)
+                if (!ResChecker.checkRes(TAG, resp)) {
+                    // 虽然重查失败，但加入已经成功扣了能量，算成功
                     return EventResult.Success(usedEnergy)
                 }
 
-                val remainNeed = total - curr
-                if (remainNeed > 0 && (availableEnergy - usedEnergy) >= remainNeed) {
-                    val chargeResp = Credit2101RpcCall.chargeBlackMarkEvent(remainNeed, eventId)
-                    if (chargeResp.isNotEmpty() && JSONObject(chargeResp).optBoolean("success", false)) {
-                        usedEnergy += remainNeed
-                        Log.other("信用2101⚫[黑色印记] 完成修复,注入 $remainNeed")
-                    }
-                } else if (remainNeed > 0) {
-                    Log.record(TAG, "信用2101⚫[黑色印记] 剩余需求 $remainNeed,能量不足")
-                }
-
-                return EventResult.Success(usedEnergy)
+                jo = JSONObject(resp)
+                assistantVO = jo.optJSONObject("assistantVO") ?: return EventResult.Success(usedEnergy)
             }
 
-            // 情况2: 已加入,检查是否需要补能
-            if (assistantVO == null) {
-                Log.error(TAG, "信用2101⚫[数据异常] assistantVO为空")
-                return EventResult.Failed
-            }
-
+            // --- 阶段 3: 尝试充能 (通用逻辑) ---
+            // 此时无论是刚加入的，还是原本就在里面的，流程都汇聚到这里
             val curr = assistantVO.optInt("currAssistantCount", 0)
             val total = assistantVO.optInt("totalAssistantCount", 0)
 
-            if (curr >= total && total != 0) {
-                Log.record(TAG, "信用2101⚫[黑色印记] 能量已满 $curr/$total")
-                return EventResult.Skipped
+            if (total == 0) {
+                // 防御性编程，避免除零或逻辑错误，如果已加入则返回Success
+                return if (usedEnergy > 0) EventResult.Success(usedEnergy) else EventResult.Failed
             }
 
             val remainNeed = total - curr
-            if (remainNeed > 0 && availableEnergy >= remainNeed) {
+
+            if (remainNeed <= 0) {
+                Log.record(TAG, "信用2101⚫[黑色印记] 能量已满 $curr/$total")
+                return if (usedEnergy > 0) EventResult.Success(usedEnergy) else EventResult.Skipped
+            }
+
+            if (currentEnergy >= remainNeed) {
                 val chargeResp = Credit2101RpcCall.chargeBlackMarkEvent(remainNeed, eventId)
-                if (chargeResp.isNotEmpty() && JSONObject(chargeResp).optBoolean("success", false)) {
+                if (ResChecker.checkRes(TAG, chargeResp)) {
                     usedEnergy += remainNeed
-                    Log.other("信用2101⚫[黑色印记] 完成修复,注入 $remainNeed")
+                    Log.other("信用2101⚫[黑色印记] 完成修复, 注入 $remainNeed")
                     return EventResult.Success(usedEnergy)
                 } else {
                     Log.error(TAG, "信用2101⚫[充能失败]")
-                    return EventResult.Failed
+                    // 如果前面加入了，这里充能失败也算部分成功
+                    return if (usedEnergy > 0) EventResult.Success(usedEnergy) else EventResult.Failed
                 }
-            } else if (remainNeed > 0) {
-                Log.record(TAG, "信用2101⚫[黑色印记] 需求 $remainNeed,能量不足")
-                return EventResult.Skipped
+            } else {
+                Log.record(TAG, "信用2101⚫[黑色印记] 剩余需求 $remainNeed, 能量不足")
+                // 同上，如果只加入了但不够充能，也算成功消耗了能量
+                return if (usedEnergy > 0) EventResult.Success(usedEnergy) else EventResult.Skipped
             }
 
-            return EventResult.Skipped
-
         } catch (e: Throwable) {
-            Log.printStackTrace(TAG, e)
+            Log.printStackTrace(TAG, "处理黑色印记异常", e)
             return EventResult.Failed
         }
     }
-    /*
-    private fun handleBlackMark(ev: JSONObject, availableEnergy: Int): Int {
-        val eventId = ev.optString("eventId", "")
-        val eventStatus = ev.optString("eventStatus", "")
-        if (eventId.isEmpty()) {
-            Log.error(TAG, "信用2101⚫[黑色印记] 事件ID为空 $ev")
-            return 0
-        }
-
-        try {
-            val resp = Credit2101RpcCall.queryBlackMarkEvent(eventId)
-            if (!ResChecker.checkRes(TAG, resp)) {
-                Log.error(TAG, "信用2101⚫[黑色印记查询失败] resp=$resp")
-                return 0
-            }
-
-            val jo = JSONObject(resp)
-            val assistantVO = jo.optJSONObject("assistantVO")
-
-            val userList = assistantVO?.optJSONArray("assistantUserInfoList")
-            val userCount = userList?.length() ?: 0   // 👈 放这里，下面随便用
-
-            //检查是否有自己
-            var hasSelf = false
-            if (userList != null) {
-                for (i in 0 until userCount) {
-                    val u = userList.optJSONObject(i) ?: continue
-                    if (u.optBoolean("self", false)) {
-                        hasSelf = true
-                        break
-                    }
-                }
-            }
-
-
-            var usedEnergy = 0
-
-            // 如果未加入，先加入占位
-            if (!hasSelf) {
-                if (userCount >= 4) {
-                    Log.record(TAG, "信用2101⚫[黑色印记] 占位已满(4/4)，无法加入")
-                    return 0
-                }
-                if (availableEnergy < 10) {
-                    Log.record(TAG, "信用2101⚫[黑色印记] 能量不足 10，无法加入占位")
-                    return 0
-                }
-
-                val joinEnergy = 10
-                val joinResp = Credit2101RpcCall.joinBlackMarkEvent(joinEnergy, eventId)
-
-                if (!ResChecker.checkRes(TAG+"加入失败:$ev 详情[$resp]", joinResp)) {
-                    Log.record(TAG, "信用2101⚫[加入失败] 可能已被他人填满或过期 事件[$ev] $joinResp")
-                    return 0
-                }
-
-                usedEnergy += joinEnergy
-                Log.other("信用2101⚫[黑色印记] 已成功加入占位，注入 $joinEnergy")
-
-                // 重新查询获取完整数据
-                val newResp = Credit2101RpcCall.queryBlackMarkEvent(eventId)
-                if (!ResChecker.checkRes(TAG, newResp)) {
-                    Log.error(TAG, "信用2101⚫[重新查询失败] resp=$newResp")
-                    return usedEnergy
-                }
-
-                val newJo = JSONObject(newResp)
-                val newAssistantVO = newJo.optJSONObject("assistantVO") ?: return usedEnergy
-
-                val curr = newAssistantVO.optInt("currAssistantCount", 0)
-                val total = newAssistantVO.optInt("totalAssistantCount", 0)
-
-                if (total == 0) {
-                    Log.error(TAG, "信用2101⚫[数据异常] 总能量为0 resp=$newResp")
-                    return usedEnergy
-                }
-
-                Log.record(TAG, "信用2101⚫[当前进度] $curr/$total")
-
-                // 判断是否补满
-                val remainNeed = total - curr
-                if (remainNeed > 0 && (availableEnergy - usedEnergy) >= remainNeed) {
-                    val chargeResp = Credit2101RpcCall.chargeBlackMarkEvent(remainNeed, eventId)
-                    if (chargeResp.isNotEmpty() && JSONObject(chargeResp).optBoolean("success", false)) {
-                        usedEnergy += remainNeed
-                        Log.other("信用2101⚫[黑色印记] 能量充足，已完成最终修复，注入 $remainNeed")
-                    }
-                } else if (remainNeed > 0) {
-                    Log.record(TAG, "信用2101⚫[黑色印记] 剩余所需 $remainNeed 能量不足以注满，跳过补能")
-                }
-
-                return usedEnergy
-            }
-
-            // 已加入的情况，直接处理
-            if (assistantVO == null) {
-                Log.error(TAG, "信用2101⚫[数据异常] assistantVO为空但已加入")
-                return 0
-            }
-
-            val curr = assistantVO.optInt("currAssistantCount", 0)
-            val total = assistantVO.optInt("totalAssistantCount", 0)
-
-            if (curr >= total && total != 0) {
-                Log.record(TAG, "信用2101⚫[黑色印记] 能量已满 $curr/$total")
-                return -1
-            }
-
-            val remainNeed = total - curr
-            if (remainNeed > 0 && availableEnergy >= remainNeed) {
-                val chargeResp = Credit2101RpcCall.chargeBlackMarkEvent(remainNeed, eventId)
-                if (chargeResp.isNotEmpty() && JSONObject(chargeResp).optBoolean("success", false)) {
-                    usedEnergy += remainNeed
-                    Log.other("信用2101⚫[黑色印记] 能量充足，已完成最终修复，注入 $remainNeed")
-                }
-            } else if (remainNeed > 0) {
-                Log.record(TAG, "信用2101⚫[黑色印记] 已处于加入状态，剩余所需 $remainNeed 能量不足以注满")
-            }
-
-            return usedEnergy
-
-        } catch (e: Throwable) {
-            Log.printStackTrace(TAG, e)
-            return 0
-        }
-    }
-
-*/
-
     /** 探测一次事件 */
     private fun exploreOnce(cityCode: String, latitude: Double, longitude: Double): Boolean {
         val resp = Credit2101RpcCall.exploreGridEvent(cityCode, latitude, longitude)

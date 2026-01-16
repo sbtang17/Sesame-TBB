@@ -5,6 +5,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import fansirsqi.xposed.sesame.util.GlobalThreadPools;
 import fansirsqi.xposed.sesame.util.Log;
@@ -102,12 +103,6 @@ public class ChouChouLe {
 
                 for (TaskInfo task : tasks) {
                     if (TaskStatus.FINISHED.name().equals(task.taskStatus)) {
-                        // 检查饲料上限
-//                        if (task.awardType.equals("ALLPURPOSE") &&
-//                                task.awardCount + AntFarm.foodStock > AntFarm.foodStockLimit) {
-//                            Log.record(TAG, "抽抽乐任务[" + task.title + "]的奖励领取后会使饲料超出上限，暂不领取");
-//                            continue;
-//                        }
                         if (receiveTaskAward(drawType, task.taskId)) {
                             GlobalThreadPools.sleepCompat(300L);
                             doubleCheck = true;
@@ -210,7 +205,7 @@ public class ChouChouLe {
 
             // 特殊任务：浏览广告
             if (task.taskId.equals("SHANGYEHUA_DAILY_DRAW_TIMES") ||
-                    task.taskId.equals("SHANGYEHUA_IP_DRAW_TIMES")) {
+                    task.taskId.equals("IP_SHANGYEHUA_TASK")) {
                 return handleAdTask(drawType, task);
             }
 
@@ -231,6 +226,12 @@ public class ChouChouLe {
                     GlobalThreadPools.sleepCompat(1000L);
                 }
                 return true;
+            }else {
+                String resultCode = jo.optString("resultCode");
+                if ("DRAW_MACHINE07".equals(resultCode)) {
+                    Log.record(TAG, taskName + "任务[" + task.title + "]失败: 饲料不足，停止后续尝试");
+                    return false;
+                }
             }
             return false;
         } catch (Throwable t) {
@@ -379,17 +380,31 @@ public class ChouChouLe {
 
             JSONObject activity = jo.optJSONObject("drawMachineActivity");
             if (activity == null) return true;
+            String activityId = activity.optString("activityId");
             long endTime = activity.optLong("endTime", 0);
             if (endTime > 0 && System.currentTimeMillis() > endTime) {
                 Log.record(TAG, "该[" + activity.optString("activityId") + "]抽奖活动已结束");
                 return true;
             }
 
-            int drawTimes = jo.optInt("drawTimes", 0);
+            int remainingTimes = jo.optInt("drawTimes", 0);
             boolean allSuccess = true;
-            for (int i = 0; i < drawTimes; i++) {
-                allSuccess &= drawPrize("IP抽抽乐", AntFarmRpcCall.drawMachineIP());
-                GlobalThreadPools.sleepCompat(300L);
+            Log.record(TAG, "IP抽抽乐剩余次数: " + remainingTimes);
+
+            while (remainingTimes > 0) {
+                int batchCount = Math.min(remainingTimes, 10);
+                Log.record(TAG, "执行 IP 抽抽乐 " + batchCount + " 连抽...");
+
+                String response = AntFarmRpcCall.drawMachineIP(batchCount);
+                allSuccess &= drawPrize("IP抽抽乐", response);
+
+                remainingTimes -= batchCount;
+                if (remainingTimes > 0) {
+                    GlobalThreadPools.sleepCompat(1500L);
+                }
+            }
+            if (!activityId.isEmpty()) {
+                batchExchangeRewards(activityId);
             }
             return allSuccess;
         } catch (Throwable t) {
@@ -417,12 +432,22 @@ public class ChouChouLe {
                 return true;
             }
 
-            String activityId = activity.optString("activityId");
-            int drawTimes = jo.optInt("drawTimes", 0);
+            int remainingTimes = jo.optInt("drawTimes", 0);
             boolean allSuccess = true;
-            for (int i = 0; i < drawTimes; i++) {
-                allSuccess &= drawPrize("日常抽抽乐", AntFarmRpcCall.drawMachineDaily(activityId));
-                GlobalThreadPools.sleepCompat(300L);
+
+            Log.record(TAG, "日常抽抽乐剩余次数: " + remainingTimes);
+
+            while (remainingTimes > 0) {
+                int batchCount = Math.min(remainingTimes, 10);
+                Log.record(TAG, "执行日常抽抽乐 " + batchCount + " 连抽...");
+
+                String response = AntFarmRpcCall.drawMachineDaily(batchCount);
+                allSuccess &= drawPrize("日常抽抽乐", response);
+
+                remainingTimes -= batchCount;
+                if (remainingTimes > 0) {
+                    GlobalThreadPools.sleepCompat(1500L);
+                }
             }
             return allSuccess;
         } catch (Throwable t) {
@@ -442,14 +467,22 @@ public class ChouChouLe {
         try {
             JSONObject jo = new JSONObject(response);
             if (ResChecker.checkRes(TAG, jo)) {
-
-                JSONObject prize = jo.optJSONObject("drawMachinePrize");
-                if (prize != null) {
-                    String title = prize.optString("title",
-                            prize.optString("prizeName", "未知奖品"));
-                    Log.farm(prefix + "🎁[领取: " + title +"]");
-                } else {
-                    Log.farm(prefix + "🎁[领取: 未知奖品]"+response);
+                JSONArray prizeList = jo.optJSONArray("drawMachinePrizeList");
+                if (prizeList != null && prizeList.length() > 0) {
+                    for (int i = 0; i < prizeList.length(); i++) {
+                        JSONObject prize = prizeList.getJSONObject(i);
+                        String title = prize.optString("title", prize.optString("prizeName", "未知奖品"));
+                        Log.farm(prefix + "🎁[领取: " + title + "]");
+                    }
+                }
+                else {
+                    JSONObject prize = jo.optJSONObject("drawMachinePrize");
+                    if (prize != null) {
+                        String title = prize.optString("title", prize.optString("prizeName", "未知奖品"));
+                        Log.farm(prefix + "🎁[领取: " + title + "]");
+                    } else {
+                        Log.farm(prefix + "🎁[抽奖成功，但未解析到具体奖品名称]");
+                    }
                 }
                 return true;
             }
@@ -457,5 +490,107 @@ public class ChouChouLe {
             Log.printStackTrace("drawPrize err:", t);
         }
         return false;
+    }
+
+    /**
+     * 批量兑换奖励（严格优先级策略）
+     */
+    public void batchExchangeRewards(String activityId) {
+        try {
+            String response = AntFarmRpcCall.getItemList(activityId, 10, 0);
+            JSONObject respJson = new JSONObject(response);
+
+            if (respJson.optBoolean("success", false)) {
+                int totalCent = 0;
+                JSONObject mallAccount = respJson.optJSONObject("mallAccountInfoVO");
+                if (mallAccount != null) {
+                    JSONObject holdingCount = mallAccount.optJSONObject("holdingCount");
+                    if (holdingCount != null) {
+                        totalCent = holdingCount.optInt("cent", 0);
+                    }
+                }
+                Log.record("自动兑换", "当前持有总碎片: " + (totalCent / 100));
+                JSONArray itemVOList = respJson.optJSONArray("itemInfoVOList");
+                if (itemVOList == null) return;
+
+                List<JSONObject> allSkus = new ArrayList<>();
+                for (int i = 0; i < itemVOList.length(); i++) {
+                    JSONObject item = itemVOList.optJSONObject(i);
+                    if (item == null) continue;
+                    JSONArray skuList = item.optJSONArray("skuModelList");
+                    if (skuList == null) continue;
+                    for (int j = 0; j < skuList.length(); j++) {
+                        JSONObject sku = skuList.optJSONObject(j);
+                        if (sku == null) continue;
+                        sku.put("_spuId", item.optString("spuId"));
+                        sku.put("_spuName", item.optString("spuName"));
+                        allSkus.add(sku);
+                    }
+                }
+
+                allSkus.sort((a, b) -> {
+                    int priceA = a.optJSONObject("price") != null ? a.optJSONObject("price").optInt("cent", 0) : 0;
+                    int priceB = b.optJSONObject("price") != null ? b.optJSONObject("price").optInt("cent", 0) : 0;
+                    if (priceA == 300 && priceB != 300) return 1;
+                    if (priceA != 300 && priceB == 300) return -1;
+                    return Integer.compare(priceB, priceA);
+                });
+
+                // 列出符合条件的非扫尾项目 (>300分 且 有次数)
+                for (JSONObject sku : allSkus) {
+                    int cent = sku.optJSONObject("price") != null ? sku.optJSONObject("price").optInt("cent", 0) : 0;
+                    if (cent <= 300) continue;
+
+                    int exchangedCount = sku.optInt("exchangedCount", 0);
+                    String extendInfo = sku.optString("skuExtendInfo");
+                    int limit = extendInfo.contains("20次") ? 20 : (extendInfo.contains("5次") ? 5 : 1);
+
+                    if (exchangedCount < limit) {
+                        Log.record("自动兑换"," (" + sku.optString("skuName") + ") - 碎片: " + totalCent / 100 + "/" + cent / 100 +
+                                " (进度: " + exchangedCount + "/" + limit + ")");
+                    }
+                }
+
+                // 执行顺序兑换
+                for (JSONObject sku : allSkus) {
+                    int exchangedCount = sku.optInt("exchangedCount", 0);
+                    String extendInfo = sku.optString("skuExtendInfo");
+                    int limitCount = extendInfo.contains("20次") ? 20 : (extendInfo.contains("5次") ? 5 : 1);
+                    String skuName = sku.optString("skuName");
+
+                    if (exchangedCount < limitCount) {
+                        // 如果当前最高价值项初始状态就显示积分不足，直接终止所有兑换逻辑
+                        if ("NO_ENOUGH_POINT".equals(sku.optString("skuRuleResult"))) {
+                            Log.record("自动兑换", "积分不足以兑换当前最高优先级项 [" + skuName + "]，停止后续尝试");
+                            return;
+                        }
+
+                        // 循环兑换直到该物品满额或积分不足
+                        while (exchangedCount < limitCount) {
+                            String result = AntFarmRpcCall.exchangeBenefit(
+                                    sku.optString("_spuId"), sku.optString("skuId"),
+                                    activityId, "ANTFARM_IP_DRAW_MALL", "antfarm_villa");
+
+                            JSONObject resObj = new JSONObject(result);
+                            String resultCode = resObj.optString("resultCode");
+
+                            if ("SUCCESS".equals(resultCode)) {
+                                exchangedCount++;
+                                Log.record("自动兑换", "成功兑换: " + skuName + " (" + exchangedCount + "/" + limitCount + ")");
+                                GlobalThreadPools.sleepCompat(600L);
+                            } else if ("NO_ENOUGH_POINT".equals(resultCode)) {
+                                Log.record("自动兑换", "兑换过程中积分不足，停止后续所有任务");
+                                return;
+                            } else {
+                                Log.record("自动兑换", "跳过 [" + skuName + "]: " + resObj.optString("resultDesc"));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.error("自动兑换异常", Objects.requireNonNull(e.getMessage()));
+        }
     }
 }

@@ -88,7 +88,7 @@ class RpcDebugViewModel(application: Application) : AndroidViewModel(application
 
     fun showEditDialog(item: RpcDebugItem) {
         val json = try {
-            val map = mapOf("Name" to item.name, "Method" to item.method, "requestData" to item.requestData)
+            val map = mapOf("Name" to item.name, "methodName" to item.method, "requestData" to item.requestData)
             objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(map)
         } catch (_: Exception) {
             "{}"
@@ -110,7 +110,7 @@ class RpcDebugViewModel(application: Application) : AndroidViewModel(application
             val finalName = name.ifEmpty { parsedName }
 
             if (method.isEmpty()) {
-                ToastUtil.makeText("Method 不能为空", Toast.LENGTH_SHORT).show()
+                ToastUtil.makeText("methodName 不能为空", Toast.LENGTH_SHORT).show()
                 return
             }
 
@@ -247,7 +247,7 @@ class RpcDebugViewModel(application: Application) : AndroidViewModel(application
 
     fun shareItem(item: RpcDebugItem, context: Context) {
         try {
-            val map = mapOf("Name" to item.name, "Method" to item.method, "requestData" to item.requestData)
+            val map = mapOf("Name" to item.name, "methodName" to item.method, "requestData" to item.requestData)
             val json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(map)
             copyToClipboard("RPC Item", json, context)
             ToastUtil.makeText("已复制", Toast.LENGTH_SHORT).show()
@@ -263,17 +263,15 @@ class RpcDebugViewModel(application: Application) : AndroidViewModel(application
 
     // 复用原有的 JSON 解析逻辑 (略微精简)
     private fun prepareJsonInput(text: String): String {
-        return if (text.contains("{")) text else """{ "Method": "", "requestData": [{}] }"""
+        return if (text.contains("{")) text else """{ "methodName": "", "requestData": [{}] }"""
     }
 
     private fun parseJsonFields(json: String): Triple<String, String, Any?> {
-        // ... 原有的 parseJsonFields 逻辑 ...
-        // 简单实现演示：
         val map = objectMapper.readValue(json, Map::class.java)
         return Triple(
             (map["Name"] ?: map["name"])?.toString() ?: "",
-            (map["Method"] ?: map["method"])?.toString() ?: "",
-            map["requestData"] ?: map["RequestData"]
+            (map["methodName"] ?: map["method"])?.toString() ?: "",
+            map["requestData"] ?: map["RequestData"],
         )
     }
 
