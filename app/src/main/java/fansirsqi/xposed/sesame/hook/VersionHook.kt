@@ -13,7 +13,7 @@ import kotlin.concurrent.Volatile
 
 /**
  * 版本号 Hook 工具类
- * 用于在应用启动早期拦截并获取支付宝版本信息
+ * 用于在应用启动早期拦截并获取目标应用版本信息
  */
 object VersionHook {
     private const val TAG = "VersionHook"
@@ -56,7 +56,7 @@ object VersionHook {
                         try {
                             val packageInfo = param.result as PackageInfo?
 
-                            // 只处理支付宝的包信息
+                            // 只处理目标应用的包信息
                             if (packageInfo != null &&
                                 General.PACKAGE_NAME == packageInfo.packageName
                             ) {
@@ -68,7 +68,7 @@ object VersionHook {
                                 if (capturedVersion == null && versionName != null) {
                                     capturedVersion = AlipayVersion(versionName)
                                     record(
-                                        TAG, "✅ 捕获支付宝版本: " + versionName +
+                                        TAG, "✅ 捕获目标应用版本: " + versionName +
                                                 " (code: " + versionCode +
                                                 ", longCode: " + longVersionCode + ")"
                                     )

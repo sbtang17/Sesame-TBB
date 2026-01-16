@@ -1,4 +1,4 @@
-package fansirsqi.xposed.sesame.ui.screen
+package fansirsqi.xposed.sesame.ui.extension
 
 import android.graphics.Paint
 import androidx.compose.foundation.layout.Box
@@ -61,7 +61,7 @@ fun WatermarkLayer(
 
         // 使用传入的 uidList 进行判断
         val uidLines = if (uidList.isEmpty()) {
-            listOf("未载入账号", "请启用模块后重启一次支付宝", "确保模块生成对应账号配置")
+            listOf("未载入账号", "请启用模块后重启一次目标应用", "确保模块生成对应账号配置")
         } else {
             uidList.mapIndexed { index, uid -> "UID${index + 1}: $uid" }
         }

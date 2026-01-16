@@ -100,7 +100,7 @@ public class AntSports extends ModelTask {
         modelFields.addField(openTreasureBox = new BooleanModelField("openTreasureBox", "开启宝箱", false));
         modelFields.addField(sportsTasks = new BooleanModelField("sportsTasks", "开启运动任务", false));
         modelFields.addField(sportsEnergyBubble = new BooleanModelField("sportsEnergyBubble", "运动球任务(开启后有概率出现滑块验证)", false));
-        //干就完了，都能做  modelFields.addField(sportsTaskBlacklist = new StringModelField("sportsTaskBlacklist", "运动任务黑名单 | 任务名称(用,分隔)", "开通包裹查询服务,添加支付宝小组件,领取价值1.7万元配置,支付宝积分可兑券"));
+        //干就完了，都能做  modelFields.addField(sportsTaskBlacklist = new StringModelField("sportsTaskBlacklist", "运动任务黑名单 | 任务名称(用,分隔)", "开通包裹查询服务,添加目标应用小组件,领取价值1.7万元配置,目标应用积分可兑券"));
         modelFields.addField(receiveCoinAsset = new BooleanModelField("receiveCoinAsset", "收能量🎈", false));
         modelFields.addField(donateCharityCoin = new BooleanModelField("donateCharityCoin", "捐能量🎈 | 开启", false));
         modelFields.addField(donateCharityCoinType = new ChoiceModelField("donateCharityCoinType", "捐能量🎈 | 方式", DonateCharityCoinType.ONE, DonateCharityCoinType.nickNames));
@@ -2904,7 +2904,7 @@ private boolean handleLightTask(JSONObject task, String title, String jumpLink) 
                 "大美中国", "公益一小步", "登顶芝麻山", "维C大挑战", "龙年祈福", "守护体育梦"
         };
 
-        /** * @brief 对应支付宝接口的 ThemeID 映射表
+        /** * @brief 对应目标应用接口的 ThemeID 映射表
          * @note 数组顺序必须与上方常量定义保持严格一致
          */
         String[] themeIds = {

@@ -774,7 +774,7 @@ object Credit2101 {
                         throw Exception("LocationHelper 定位数据不完整")
                     }
 
-                    Log.record(TAG, "信用2101📍[LocationHelper] 使用支付宝定位成功")
+                    Log.record(TAG, "信用2101📍[LocationHelper] 使用目标应用定位成功")
                 } else {
                     Log.error(TAG, "信用2101📍[LocationHelper] 返回为空，尝试使用 API 备用")
                     throw Exception("LocationHelper 返回为空")

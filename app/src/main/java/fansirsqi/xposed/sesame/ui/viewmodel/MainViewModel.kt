@@ -9,6 +9,7 @@ import fansirsqi.xposed.sesame.service.ConnectionState
 import fansirsqi.xposed.sesame.service.LsposedServiceManager
 import fansirsqi.xposed.sesame.ui.screen.DeviceInfoUtil
 import fansirsqi.xposed.sesame.util.AssetUtil
+import fansirsqi.xposed.sesame.util.CommandUtil
 import fansirsqi.xposed.sesame.util.DataStore
 import fansirsqi.xposed.sesame.util.DirectoryWatcher
 import fansirsqi.xposed.sesame.util.FansirsqiUtil
@@ -44,10 +45,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ) : ModuleStatus()
     }
 
+    // 1. 定义服务状态 (Root/Shizuku/None)
+    sealed class ServiceStatus {
+        data object Loading : ServiceStatus()
+        data class Active(val type: String) : ServiceStatus() // type = "Root" or "Shizuku"
+        data object Inactive : ServiceStatus()
+    }
+
     companion object {
         const val TAG = "MainViewModel"
         var verifuids = FansirsqiUtil.getFolderList(Files.CONFIG_DIR.absolutePath)
     }
+
+    private val _serviceStatus = MutableStateFlow<ServiceStatus>(ServiceStatus.Loading)
+    val serviceStatus = _serviceStatus.asStateFlow()
 
     // --- StateFlows ---
 
@@ -105,6 +116,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         LsposedServiceManager.removeConnectionListener(serviceListener)
     }
 
+
+
     /**
      * 刷新模块框架激活状态
      */
@@ -124,7 +137,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         } else if (fileStatus != null) {
             // 如果 Service 没连上，但文件里有状态（说明 LSPatch 生效并写入了）
-            // 可选：检查时间戳，如果太久远可能意味着支付宝没在运行
+            // 可选：检查时间戳，如果太久远可能意味着目标应用没在运行
             _moduleStatus.value = ModuleStatus.Activated(
                 frameworkName = fileStatus.framework,
                 frameworkVersion = "",
@@ -186,6 +199,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val info = DeviceInfoUtil.showInfo(context)
             _deviceInfo.value = info
+            // 独立获取服务状态
+            _serviceStatus.value = ServiceStatus.Loading
+            val shellType = withContext(Dispatchers.IO) { CommandUtil.getShellType(context) }
+
+            _serviceStatus.value = when (shellType) {
+                "RootShell" -> ServiceStatus.Active("Root")
+                "ShizukuShell" -> ServiceStatus.Active("Shizuku")
+                else -> ServiceStatus.Inactive
+            }
         }
     }
 

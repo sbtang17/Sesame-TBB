@@ -3,7 +3,7 @@ import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * 表示支付宝版本的实体类，可进行版本比较。
+ * 表示目标应用版本的实体类，可进行版本比较。
  */
 @Getter
 public class AlipayVersion implements Comparable<AlipayVersion> {

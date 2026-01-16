@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import fansirsqi.xposed.sesame.ui.screen.RpcDebugScreen
-import fansirsqi.xposed.sesame.ui.screen.WatermarkLayer
+import fansirsqi.xposed.sesame.ui.extension.WatermarkLayer
 import fansirsqi.xposed.sesame.ui.theme.AppTheme
 
 class RpcDebugActivity : ComponentActivity() {

@@ -43,7 +43,7 @@ val defaultBlacklist = setOf(
     "0.1元起租会员攒粒",        // 参数错误：ILLEGAL_ARGUMENT
     "完成旧衣回收得现金",        // 参数错误：ILLEGAL_ARGUMENT
     "坚持刷视频赚福利",         // 存在进行中的生活记录：PROMISE_HAS_PROCESSING_TEMPLATE
-    "去领支付宝积分",           // 存在进行中的生活记录：PROMISE_HAS_PROCESSING_TEMPLATE
+    "去领目标应用积分",           // 存在进行中的生活记录：PROMISE_HAS_PROCESSING_TEMPLATE
     "去参与花呗活动",           // 存在进行中的生活记录：PROMISE_HAS_PROCESSING_TEMPLATE
     "逛网商领福利金",           // 存在进行中的生活记录：PROMISE_HAS_PROCESSING_TEMPLATE
     "去浏览租赁大促会场",        // 存在进行中的生活记录：PROMISE_HAS_PROCESSING_TEMPLATE

@@ -49,7 +49,7 @@ fun DeviceInfoCard(info: Map<String, String>) {
                         val context = LocalContext.current
                         Text(
                             text = "$label: $displayValue",
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .combinedClickable(
@@ -60,12 +60,13 @@ fun DeviceInfoCard(info: Map<String, String>) {
                                         clipboardManager.setPrimaryClip(clip)
                                         ToastUtil.showToast("Verify ID copied")
                                     }
-                                )
+                                ),
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
 
                     else -> {
-                        Text(text = "$label: $value", fontSize = 12.sp, style = MaterialTheme.typography.bodyMedium)
+                        Text(text = "$label: $value", fontSize = 14.sp, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
                 Spacer(modifier = Modifier.height(1.dp))
@@ -108,24 +109,12 @@ object DeviceInfoUtil {
         val deviceName = getDeviceName(context)
         val verifyId = getSn(context)
 
-
-        val currentShellType = CommandUtil.getShellType(context)
-
-
-        val permissionStatus = when (currentShellType) {
-            "RootShell" -> "Root ✔"
-            "ShizukuShell" -> "Shizuku ✔"
-            "no_executor" -> "未授权滑块服务 ❌"
-            else -> "未知 ❌"
-        }
-
         mapOf(
             "Product" to "${Build.MANUFACTURER} ${Build.PRODUCT}",
             "Device" to deviceName,
             "Android Version" to "${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})",
             "System Version" to "${Build.DISPLAY}",
             "Verify ID" to verifyId,
-            "Captcha Permission" to permissionStatus,
             "Build Date" to "${BuildConfig.BUILD_DATE} ${BuildConfig.BUILD_TIME}"
         )
     }

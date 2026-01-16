@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * 命令服务客户端工具类
  * 负责与 CommandService 建立连接并通过 AIDL 发送指令
- * 支持从宿主应用（支付宝）进程跨进程绑定到模块的 Service
+ * 支持从宿主应用（目标应用）进程跨进程绑定到模块的 Service
  */
 object CommandUtil {
 
@@ -75,7 +75,7 @@ object CommandUtil {
 
     /**
      * 绑定服务 (线程安全)
-     * 支持跨进程绑定：从支付宝进程绑定模块的 CommandService
+     * 支持跨进程绑定：从目标应用进程绑定模块的 CommandService
      */
     @SuppressLint("ObsoleteSdkInt")
     private suspend fun ensureServiceBound(context: Context): Boolean {

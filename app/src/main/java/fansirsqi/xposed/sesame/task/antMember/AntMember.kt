@@ -2731,7 +2731,7 @@ class AntMember : ModelTask() {
 
 
                 if (task.has("actionUrl") && task.getString("actionUrl").contains("jumpAction")) {
-                    // 跳转APP任务 依赖跳转的APP发送请求鉴别任务完成 仅靠hook支付宝无法完成
+                    // 跳转APP任务 依赖跳转的APP发送请求鉴别任务完成 仅靠hook目标应用无法完成
                     record(TAG, "芝麻信用💳[跳过跳转APP任务]#$taskTitle")
                     skippedCount++
                     continue
@@ -2923,10 +2923,10 @@ class AntMember : ModelTask() {
                                     "JFLLRW_TASK" ->                   // 逛一逛得缴费红包
                                         taskReceive(taskCode, "JFLL_VIEWED", title)
 
-                                    "ZFBHYLLRW_TASK" ->                   // 逛一逛支付宝会员
+                                    "ZFBHYLLRW_TASK" ->                   // 逛一逛目标应用会员
                                         taskReceive(taskCode, "ZFBHYLL_VIEWED", title)
 
-                                    "QQKLLRW_TASK" ->                   // 逛一逛支付宝亲情卡
+                                    "QQKLLRW_TASK" ->                   // 逛一逛目标应用亲情卡
                                         taskReceive(taskCode, "QQKLL_VIEWED", title)
 
                                     "SSLLRW_TASK" ->                   // 逛逛领优惠得红包

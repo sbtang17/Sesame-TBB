@@ -15,7 +15,7 @@ object SwipeUtil {
     private const val TAG = "SwipeUtil"
 
     /**
-     * 启动支付宝
+     * 启动目标应用
      * 供 Java 调用，使用 runBlocking 保证同步返回
      */
     @JvmStatic
