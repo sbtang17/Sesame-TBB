@@ -54,7 +54,7 @@ fun HomeContent(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "本应用开源免费,严禁倒卖!!\n如果你在闲鱼看到,欢迎给我们反馈",
+                    "红红火火，好运相伴",
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold,
