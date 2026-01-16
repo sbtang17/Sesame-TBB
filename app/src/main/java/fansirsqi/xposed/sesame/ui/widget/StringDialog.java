@@ -28,7 +28,7 @@ public class StringDialog {
         StringDialog.modelField = modelField;
         AlertDialog editDialog = getEditDialog(c);
         editDialog.setTitle(title);
-        // editDialog.show();
+        editDialog.show();
     }
 
 
@@ -85,7 +85,7 @@ public class StringDialog {
             readDialog.setMessage(msg);
         }
         readDialog.setTitle(title);
-        // readDialog.show();
+        readDialog.show();
     }
 
     private static AlertDialog getReadDialog(Context c) {
@@ -128,7 +128,7 @@ public class StringDialog {
                 .setPositiveButton(positiveButton, (dialog, which) -> dialog.dismiss())
                 .create();
 
-        // alertDialog.show();
+        alertDialog.show();
 
         Button button = alertDialog.getButton(DialogInterface.BUTTON_POSITIVE);
         if (button != null) {
