@@ -397,10 +397,25 @@ public class AntFarmRpcCall {
     }
 
     public static String useFarmFood(String cookbookId, String cuisineId) {
-        return RequestManager.requestString("com.alipay.antfarm.useFarmFood",
-                "[{\"cookbookId\":\"" + cookbookId + "\",\"cuisineId\":\"" + cuisineId
-                        + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"useCuisine\":true,\"version\":\""
-                        + VERSION + "\"}]");
+//        return RequestManager.requestString("com.alipay.antfarm.useFarmFood",
+//                "[{\"cookbookId\":\"" + cookbookId + "\",\"cuisineId\":\"" + cuisineId
+//                        + "\",\"requestType\":\"NORMAL\",\"sceneCode\":\"ANTFARM\",\"source\":\"chInfo_ch_appcenter__chsub_9patch\",\"useCuisine\":true,\"version\":\""
+//                        + VERSION + "\"}]");
+        try {
+            JSONObject args = new JSONObject();
+            args.put("cookbookId", cookbookId);
+            args.put("cuisineId", cuisineId);
+            args.put("requestType", "NORMAL");
+            args.put("sceneCode", "ANTFARM");
+            args.put("canMock", true);
+            args.put("source", "chInfo_ch_appcenter__chsub_9patch");
+            args.put("useCuisine", true);
+            args.put("version", VERSION);
+            String params = "[" + args + "]";
+            return RequestManager.requestString("com.alipay.antfarm.useFarmFood", params);
+        } catch (JSONException e) {
+            return "";
+        }
     }
 
     public static String collectKitchenGarbage() {

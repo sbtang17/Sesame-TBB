@@ -114,7 +114,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
     private var collectWateringBubble: BooleanModelField? = null // 收取浇水金球开关
     private var batchRobEnergy: BooleanModelField? = null // 批量收取能量开关
     private var balanceNetworkDelay: BooleanModelField? = null // 平衡网络延迟开关
-    private var whackMoleMode: ChoiceModelField? = null // 6秒拼手速开关
+    var whackMoleMode: ChoiceModelField? = null // 6秒拼手速开关
     private var collectProp: BooleanModelField? = null // 收集道具开关
     private var queryInterval: StringModelField? = null // 查询间隔时间
     private var collectInterval: StringModelField? = null // 收取间隔时间
@@ -679,6 +679,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
 
     override fun boot(classLoader: ClassLoader?) {
         super.boot(classLoader)
+        instance = this
 
 
         // 安全创建各种区间限制
@@ -4586,6 +4587,9 @@ class AntForest : ModelTask(), EnergyCollectCallback {
     companion object {
         val TAG: String = AntForest::class.java.getSimpleName()
 
+        @JvmField
+        var instance: AntForest? = null
+
 
         private val offsetTimeMath = Average(5)
 
@@ -4845,5 +4849,33 @@ class AntForest : ModelTask(), EnergyCollectCallback {
      */
     private fun isTeam(homeObj: JSONObject): Boolean {
         return homeObj.optString("nextAction", "") == "Team"
+    }
+
+    /**
+     * 手动触发森林打地鼠
+     */
+    suspend fun manualWhackMole(modeIndex: Int, games: Int) {
+        try {
+            val obj = querySelfHome()
+            if (obj != null) {
+                // 确定模式：1 为兼容，2 为激进
+                val mode = if (modeIndex == 2) WhackMole.Mode.AGGRESSIVE else WhackMole.Mode.COMPATIBLE
+
+                // 设置本次执行的总局数
+                WhackMole.setTotalGames(games)
+
+                Log.record(
+                    TAG,
+                    "🎮 手动触发拼手速任务: ${if (mode == WhackMole.Mode.AGGRESSIVE) "激进模式" else "兼容模式"}, 目标局数: $games"
+                )
+
+                // 执行游戏
+                WhackMole.startSuspend(mode)
+            } else {
+                Log.record(TAG, "无法获取自己主页信息")
+            }
+        } catch (t: Throwable) {
+            Log.printStackTrace(TAG, t)
+        }
     }
 }

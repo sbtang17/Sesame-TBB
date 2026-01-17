@@ -22,9 +22,6 @@ object RequestManager {
     // 连续失败计数器
     private val errorCount = AtomicInteger(0)
 
-    // 默认最大失败次数 (建议从配置读取，这里设个默认值)
-    private const val DEFAULT_MAX_ERROR_COUNT = 10
-
     /**
      * 核心执行函数 (内联优化)
      * 流程：离线检查 -> 获取 Bridge -> 执行请求 -> 结果校验 -> 错误计数/重置
@@ -73,26 +70,21 @@ object RequestManager {
      */
     private fun handleFailure(method: String, reason: String) {
         val currentCount = errorCount.incrementAndGet()
-        // 获取配置的最大错误次数，如果配置里没有就用默认值 10
         // 假设 BaseModel 有个方法获取这个配置，或者直接用常量
-        // val maxCount = BaseModel.maxRpcErrorCount.value ?: DEFAULT_MAX_ERROR_COUNT
-        val maxCount = DEFAULT_MAX_ERROR_COUNT
+        val maxCount = BaseModel.setMaxErrorCount.value
 
         Log.error(TAG, "RPC 失败 ($currentCount/$maxCount) | Method: $method | Reason: $reason")
 
         // 触发兜底阈值
         if (currentCount >= maxCount) {
             Log.record(TAG, "🔴 连续失败次数达到阈值，触发熔断兜底机制！")
-
             // 1. 设置离线状态，停止后续任务
             ApplicationHook.setOffline(true)
-
             // 2. 发送通知 (根据用户配置)
             if (BaseModel.errNotify.value) {
                 val msg = "${TimeUtil.getTimeStr()} | 网络异常次数超过阈值[$maxCount]"
                 Notify.sendNewNotification(msg, "RPC 连续失败，脚本已暂停")
             }
-
             // 3. 立即尝试一次恢复
             handleOfflineRecovery()
         }

@@ -64,14 +64,14 @@ public class ChouChouLe {
                 return false;
             }
 
-            // 执行普通抽抽乐
-            if (drawMachineInfo.has("dailyDrawMachineActivityId")) {
-                allFinished &= doChouchoule("dailyDraw");
-            }
-
             // 执行IP抽抽乐
             if (drawMachineInfo.has("ipDrawMachineActivityId")) {
                 allFinished &= doChouchoule("ipDraw");
+            }
+
+            // 执行普通抽抽乐
+            if (drawMachineInfo.has("dailyDrawMachineActivityId")) {
+                allFinished &= doChouchoule("dailyDraw");
             }
 
             return allFinished;

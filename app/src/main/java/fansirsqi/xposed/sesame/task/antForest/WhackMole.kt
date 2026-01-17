@@ -50,32 +50,39 @@ object WhackMole {
 
     private val intervalCalculator = GameIntervalCalculator
 
-    fun start(mode: Mode) {
+    /**
+     * 挂起方式启动游戏，供 ManualTask 调用以等待完成
+     */
+    suspend fun startSuspend(mode: Mode) = withContext(Dispatchers.IO) {
         if (isRunning) {
             Log.record(TAG, "⏭️ 打地鼠游戏正在运行中，跳过重复启动")
-            return
+            return@withContext
         }
         isRunning = true
 
-        globalScope.launch {
-            try {
-                when (mode) {
-                    Mode.COMPATIBLE -> runCompatibleMode()
-                    Mode.AGGRESSIVE -> runAggressiveMode()
-                }
-                Status.setFlagToday(EXEC_FLAG)
-            } catch (e: Exception) {
-                Log.printStackTrace(TAG, "打地鼠异常: ", e)
-            } finally {
-                isRunning = false
-                Log.record(TAG, "🎮 打地鼠运行状态已重置")
+        try {
+            when (mode) {
+                Mode.COMPATIBLE -> runCompatibleMode()
+                Mode.AGGRESSIVE -> runAggressiveMode()
             }
+            Status.setFlagToday(EXEC_FLAG)
+        } catch (e: Exception) {
+            Log.printStackTrace(TAG, "打地鼠异常: ", e)
+        } finally {
+            isRunning = false
+            Log.record(TAG, "🎮 打地鼠运行状态已重置")
+        }
+    }
+
+    fun start(mode: Mode) {
+        globalScope.launch {
+            startSuspend(mode)
         }
     }
 
     // ================= [ 兼容模式：对应 old 系列 RPC ] =================
 
-    private suspend fun runCompatibleMode() = withContext(Dispatchers.IO) {
+    private suspend fun runCompatibleMode() {
         try {
             val startTs = System.currentTimeMillis()
 
@@ -83,12 +90,12 @@ object WhackMole {
             val response = JSONObject(AntForestRpcCall.oldstartWhackMole(SOURCE))
             if (!response.optBoolean("success")) {
                 Log.record(TAG, response.optString("resultDesc", "开始失败"))
-                return@withContext
+                return
             }
 
             val moleInfoArray = response.optJSONArray("moleInfo")
             val token = response.optString("token")
-            if (moleInfoArray == null || token.isEmpty()) return@withContext
+            if (moleInfoArray == null || token.isEmpty()) return
 
             val allMoleIds = mutableListOf<Long>()
             val bubbleMoleIds = mutableListOf<Long>()
@@ -168,11 +175,11 @@ object WhackMole {
         Log.forest("森林能量⚡️[激进模式${sessions.size}局 总计${totalEnergy}g]")
     }
 
-    private suspend fun startSingleRound(round: Int): GameSession? = withContext(Dispatchers.IO) {
+    private suspend fun startSingleRound(round: Int): GameSession? {
         try {
             // 标准接口调用
             val startResp = JSONObject(AntForestRpcCall.startWhackMole())
-            if (!ResChecker.checkRes(TAG, startResp)) return@withContext null
+            if (!ResChecker.checkRes(TAG, startResp)) return null
 
             if (!startResp.optBoolean("canPlayToday", true)) {
                 Status.setFlagToday(EXEC_FLAG)
@@ -181,21 +188,21 @@ object WhackMole {
 
             val token = startResp.optString("token")
             Toast.show("打地鼠 第${round}局启动\nToken: $token")
-            GameSession(token, round)
+            return GameSession(token, round)
         } catch (e: Exception) {
-            null
+            return null
         }
     }
 
-    private suspend fun settleStandardRound(session: GameSession): Int = withContext(Dispatchers.IO) {
+    private suspend fun settleStandardRound(session: GameSession): Int {
         try {
             // 标准结算调用 (RPC 内部会自动处理 moleIdList 1-15)
             val resp = JSONObject(AntForestRpcCall.settlementWhackMole(session.token))
             if (ResChecker.checkRes(TAG, resp)) {
-                return@withContext resp.optInt("totalEnergy", 0)
+                return resp.optInt("totalEnergy", 0)
             }
         } catch (e: Exception) {
         }
-        0
+        return 0
     }
 }
