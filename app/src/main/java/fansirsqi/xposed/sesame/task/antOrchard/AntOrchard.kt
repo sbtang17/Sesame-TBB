@@ -31,6 +31,8 @@ class AntOrchard : ModelTask() {
     private var executeIntervalInt: Int = 0
 
     private lateinit var executeInterval: IntegerModelField
+    // 新增七日礼包开关
+    private lateinit var receiveSevenDayGift: BooleanModelField
     private lateinit var receiveOrchardTaskAward: BooleanModelField
     private lateinit var orchardSpreadManureCount: IntegerModelField
     private lateinit var assistFriendList: SelectModelField
@@ -45,6 +47,10 @@ class AntOrchard : ModelTask() {
         val modelFields = ModelFields()
         modelFields.addField(
             IntegerModelField("executeInterval", "执行间隔(毫秒)", 500).also { executeInterval = it }
+        )
+        // 新增七日礼包开关
+        modelFields.addField(
+            BooleanModelField("receiveSevenDayGift", "收取七日礼包", true).also { receiveSevenDayGift = it }
         )
         modelFields.addField(
             BooleanModelField("receiveOrchardTaskAward", "收取农场任务奖励", false).also { receiveOrchardTaskAward = it }
@@ -90,14 +96,18 @@ class AntOrchard : ModelTask() {
                 userId = UserMap.currentUid
             }
 
-            // 七日礼包
-            if (indexJson.has("lotteryPlusInfo")) {
-                drawLotteryPlus(indexJson.getJSONObject("lotteryPlusInfo"))
+            // 修改：七日礼包逻辑完善
+            if (receiveSevenDayGift.value) {
+                if (indexJson.has("lotteryPlusInfo")) {
+                    drawLotteryPlus(indexJson.getJSONObject("lotteryPlusInfo"))
+                } else {
+                    // 首页没有，去子活动里找
+                    checkLotteryPlus()
+                }
             }
 
             // 每日肥料
             extraInfoGet()
-
 
             //如果有🥚 则进行砸🥚
             val goldenEggInfo = indexJson.getJSONObject("goldenEggInfo")
@@ -303,6 +313,32 @@ class AntOrchard : ModelTask() {
         }
     }
 
+    // 新增：从子活动中检查七日礼包
+    private suspend fun checkLotteryPlus() {
+        try {
+            if (treeLevel == null) return
+            val response = AntOrchardRpcCall.querySubplotsActivity(treeLevel!!)
+            val json = JSONObject(response)
+            if (!ResChecker.checkRes(TAG, json)) return
+
+            val subplots = json.optJSONArray("subplotsActivityList") ?: return
+            for (i in 0 until subplots.length()) {
+                val activity = subplots.getJSONObject(i)
+                if (activity.optString("activityType") == "LOTTERY_PLUS") {
+                    val extendStr = activity.optString("extend")
+                    if (extendStr.isNotEmpty()) {
+                        // extend 是字符串，需要二次解析
+                        val lotteryPlusInfo = JSONObject(extendStr)
+                        drawLotteryPlus(lotteryPlusInfo)
+                    }
+                    break
+                }
+            }
+        } catch (t: Throwable) {
+            Log.printStackTrace(TAG, "checkLotteryPlus err", t)
+        }
+    }
+
     private suspend fun drawLotteryPlus(lotteryPlusInfo: JSONObject) {
         try {
             if (!lotteryPlusInfo.has("userSevenDaysGiftsItem")) return
@@ -315,6 +351,7 @@ class AntOrchard : ModelTask() {
                 val jo2 = ja.getJSONObject(i)
                 if (jo2.getString("itemId") == itemId) {
                     if (!jo2.getBoolean("received")) {
+                        Log.record(TAG, "七日礼包: 发现未领取奖励 (itemId=$itemId)")
                         val jo3 = JSONObject(AntOrchardRpcCall.drawLottery())
                         if (jo3.getString("resultCode") == "100") {
                             val userEverydayGiftItems = jo3.getJSONObject("lotteryPlusInfo")
@@ -333,7 +370,7 @@ class AntOrchard : ModelTask() {
                             Log.record(TAG, jo3.toString())
                         }
                     } else {
-                        Log.record(TAG, "七日礼包已领取")
+                        Log.record(TAG, "七日礼包: 今日已领取")
                     }
                     break
                 }
