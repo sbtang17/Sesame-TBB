@@ -131,7 +131,7 @@ class AntOrchard : ModelTask() {
 
             // 施肥
             val orchardSpreadManureCountValue = orchardSpreadManureCount.value
-            val watered = Status.getIntFlagToday(StatusFlags.FLAG_ANTORCHARD_SpreadManure_Count) ?: 0
+            val watered = Status.getIntFlagToday(StatusFlags.FLAG_ANTORCHARD_SPREAD_MANURE_COUNT) ?: 0
             if (orchardSpreadManureCountValue > 0 && watered < 200) {
                 CoroutineUtils.sleepCompat(200)
                 orchardSpreadManure()
@@ -171,7 +171,7 @@ class AntOrchard : ModelTask() {
             var loopCount = 0 // 循环次数计数器
 
             // 获取今日已施肥次数
-            var totalWatered = Status.getIntFlagToday(StatusFlags.FLAG_ANTORCHARD_SpreadManure_Count) ?: 0
+            var totalWatered = Status.getIntFlagToday(StatusFlags.FLAG_ANTORCHARD_SPREAD_MANURE_COUNT) ?: 0
 
             // 检查是否已达到目标
             if (totalWatered >= orchardSpreadManureCount.value) {
@@ -261,7 +261,7 @@ class AntOrchard : ModelTask() {
                     totalWatered += actualWaterTimes
                     if (dailyAppWateringCount > 0) totalWatered = dailyAppWateringCount               //没用的判断增加了！
                     //原来用的totalWatered，其实想通过index获取今日次数，但是单人好像获取不到？ 为了防止浇水上限，所以直接同步 dailyAppWateringCount
-                    Status.setIntFlagToday(StatusFlags.FLAG_ANTORCHARD_SpreadManure_Count, dailyAppWateringCount)
+                    Status.setIntFlagToday(StatusFlags.FLAG_ANTORCHARD_SPREAD_MANURE_COUNT, dailyAppWateringCount)
 
                     val waterMethod = if (useQuickWater) "x$actualWaterTimes" else "x1"
                     Log.farm("农场施肥💩[$waterMethod] $stageText|累计:$totalWatered 今日:$dailyAppWateringCount")///${orchardSpreadManureCount.value}

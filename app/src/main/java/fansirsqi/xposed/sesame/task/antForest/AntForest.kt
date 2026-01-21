@@ -113,8 +113,18 @@ class AntForest : ModelTask(), EnergyCollectCallback {
     private var dontCollectList: SelectModelField? = null // 不收取能量的用户列表
     private var collectWateringBubble: BooleanModelField? = null // 收取浇水金球开关
     private var batchRobEnergy: BooleanModelField? = null // 批量收取能量开关
+    private var collectSelfEnergyType: ChoiceModelField? = null // 收自己能量方式
+    private var collectSelfEnergyThreshold: IntegerModelField? = null // 收自己能量阈值
+    private var collectBombEnergyLimit: IntegerModelField? = null // 炸弹能量收取阈值
     private var balanceNetworkDelay: BooleanModelField? = null // 平衡网络延迟开关
     var whackMoleMode: ChoiceModelField? = null // 6秒拼手速开关
+    /** 6秒拼手速游戏局数配置 */
+    var whackMoleGames: IntegerModelField? = null
+    var whackMoleMoleCount: IntegerModelField? = null
+    var whackMoleTime: StringModelField? = null // 6秒拼手速执行时间
+
+    // 6秒拼手速模式选择
+    val whackMoleModeNames = arrayOf("关闭", "兼容", "激进")
     private var collectProp: BooleanModelField? = null // 收集道具开关
     private var queryInterval: StringModelField? = null // 查询间隔时间
     private var collectInterval: StringModelField? = null // 收取间隔时间
@@ -164,12 +174,6 @@ class AntForest : ModelTask(), EnergyCollectCallback {
     private var cycleinterval: IntegerModelField? = null
     private var energyRainChance: BooleanModelField? = null
     private var energyRainTime: StringModelField? = null // 能量雨执行时间
-    /** 6秒拼手速游戏局数配置 */
-    var whackMoleGames: IntegerModelField? = null
-    var whackMoleTime: StringModelField? = null // 6秒拼手速执行时间
-
-    // 6秒拼手速模式选择
-    val whackMoleModeNames = arrayOf("关闭", "兼容", "激进")
 
     /**
      * 能量炸弹卡
@@ -226,6 +230,16 @@ class AntForest : ModelTask(), EnergyCollectCallback {
 
     private var cachedBagObject: JSONObject? = null
     private var lastQueryPropListTime: Long = 0
+
+    // {{ 新增接口定义：收自己能量的方式 }}
+    interface CollectSelfType {
+        companion object {
+            const val ALL = 0
+            const val OVER_THRESHOLD = 1
+            const val BELOW_THRESHOLD = 2
+            val nickNames = arrayOf("所有", "大于阈值", "小于阈值")
+        }
+    }
 
     override fun getName(): String {
         return "蚂蚁森林"
@@ -285,14 +299,18 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 whackMoleModeNames
             ).also { whackMoleMode = it }
         )
-
         modelFields.addField(
             IntegerModelField(
                 "whackMoleGames",
                 "🎮 6秒拼手速 | 激进模式局数",
                 5,
             ).also { whackMoleGames = it })
-
+        modelFields.addField(
+            IntegerModelField(
+                "whackMoleMoleCount",
+                "🎮 6秒拼手速 | 兼容模式击打数",
+                15,
+            ).also { whackMoleMoleCount = it })
         modelFields.addField(
             StringModelField(
                 "whackMoleTime",
@@ -300,7 +318,6 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 "0820"
             ).also { whackMoleTime = it }
         )
-
         modelFields.addField(
             BooleanModelField(
                 "energyRain",
@@ -313,6 +330,32 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 "能量雨 | 默认8点10分后执行",
                 "0810"
             ).also { energyRainTime = it })
+        modelFields.addField(
+            ChoiceModelField(
+                "CollectSelfEnergyType",
+                "收自己单个能量球 | 方式",
+                CollectSelfType.ALL,
+                CollectSelfType.nickNames
+            ).also { collectSelfEnergyType = it }
+        )
+        modelFields.addField(
+            IntegerModelField(
+                "CollectSelfEnergyThreshold",
+                "收自己单个能量球阈值",
+                0,
+                0,
+                10000
+            ).also { collectSelfEnergyThreshold = it }
+        )
+        modelFields.addField(
+            IntegerModelField(
+                "CollectBombEnergyLimit",
+                "单个炸弹能量大于该值收取",
+                0,
+                0,
+                100000
+            ).also { collectBombEnergyLimit = it }
+        )
         modelFields.addField(
             SelectModelField(
                 "dontCollectList",
@@ -366,7 +409,6 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 "DoubleCardConstant", "限时双击永动机 | 开关", false
             ).also { doubleCardConstant = it }
         )
-
         modelFields.addField(
             ChoiceModelField(
                 "bubbleBoostCard",
@@ -374,7 +416,6 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 ApplyPropType.CLOSE,
                 ApplyPropType.nickNames
             ).also { bubbleBoostCard = it })
-
         modelFields.addField(
             ListJoinCommaToStringModelField(
                 "bubbleBoostTime", "加速器 | 使用时间/不能范围", ListUtil.newArrayList(
@@ -385,7 +426,6 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                     "2359"
                 )
             ).also { bubbleBoostTime = it })
-
         modelFields.addField(
             ChoiceModelField(
                 "shieldCard",
@@ -405,7 +445,6 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 "energyBombCardType", "炸弹卡开关 | 消耗类型", ApplyPropType.CLOSE,
                 ApplyPropType.nickNames, "若开启了保护罩，则不会使用炸弹卡"
             ).also { energyBombCardType = it })
-
         modelFields.addField(
             ChoiceModelField(
                 "robExpandCard",
@@ -413,7 +452,6 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 ApplyPropType.CLOSE,
                 ApplyPropType.nickNames
             ).also { robExpandCard = it })
-
         //1.1倍能量卡时间
         modelFields.addField(
             ListJoinCommaToStringModelField(
@@ -431,7 +469,6 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 )
             )
         )
-
         modelFields.addField(
             ChoiceModelField(
                 "stealthCard",
@@ -445,7 +482,6 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 "限时隐身永动机 | 开关",
                 false
             ).also { stealthCardConstant = it })
-
         modelFields.addField(
             IntegerModelField(
                 "returnWater10",
@@ -1456,6 +1492,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                     1 -> { // 兼容模式
                         Log.record(TAG, "🎮 触发拼手速任务: 兼容模式")
                         WhackMole.setTotalGames(1)
+                        WhackMole.setMoleCount(whackMoleMoleCount?.value ?: 15)
                         WhackMole.start(WhackMole.Mode.COMPATIBLE)
                     }
                     2 -> { // 激进模式
@@ -1489,13 +1526,13 @@ class AntForest : ModelTask(), EnergyCollectCallback {
             }
             // 1. 检查接口返回是否成功
             if (!ResChecker.checkRes(TAG + "载入用户主页失败:", userHomeObj)) {
-                 Log.record(TAG, "载入失败: " + userHomeObj.optString("resultDesc", "未知错误"))
+                Log.record(TAG, "载入失败: " + userHomeObj.optString("resultDesc", "未知错误"))
                 return userHomeObj
             }
             val serverTime = userHomeObj.optLong("now", System.currentTimeMillis())
             val isSelf = userId == UserMap.currentUid
 
-            // 自己的能量不受缓存限制，好友的能量检查缓存避免重复处理
+            // 2. 自己的能量不受缓存限制，好友的能量检查缓存避免重复处理
             if (!isSelf && !userId.isNullOrEmpty() && processedUsersCache.contains(userId)) {
                 return userHomeObj
             }
@@ -1506,14 +1543,16 @@ class AntForest : ModelTask(), EnergyCollectCallback {
             }
             val userName = getAndCacheUserName(userId, userHomeObj, fromTag)
 
-            // 3. 判断是否允许收取能量
+            // 3. 判断是否允许收取能量 (开关关闭 或 在黑名单中)
             if (!collectEnergy!!.value || jsonCollectMap.contains(userId)) {
-                 Log.record(TAG, "[$userName] 不允许收取能量，跳过")
+                Log.record(TAG, "[$userName] 不允许收取能量，跳过")
                 return userHomeObj
             }
-            // 4. 获取所有可收集的能量球
+
+            // 4. 获取所有可收集的能量球 (extractBubbleInfo 内部已包含"收自己阈值"的逻辑)
             val availableBubbles: MutableList<Long> = ArrayList()
             extractBubbleInfo(userHomeObj, serverTime, availableBubbles, userId)
+
             if (availableBubbles.isEmpty()) {
                 // 记录空森林的时间戳，避免本轮重复检查
                 if (!userId.isNullOrEmpty()) {
@@ -1521,19 +1560,46 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 }
                 return userHomeObj
             }
-            // 检查是否有能量罩保护（影响当前收取）
+
+            // 5. 检查是否有能量罩或炸弹卡保护
             var hasProtection = false
             if (!isSelf) {
+                // 检查保护罩
                 if (hasShield(userHomeObj, serverTime)) {
                     hasProtection = true
-                    Log.record(TAG, "[$userName]被能量罩❤️保护着哟，跳过收取 状态判断:${false} $userId == ${UserMap.currentUid}")
+                    Log.record(TAG, "[$userName]被能量罩❤️保护着哟，跳过收取")
                 }
-                if (hasBombCard(userHomeObj, serverTime)) {
-                    hasProtection = true
-                    Log.record(TAG, "[$userName]开着炸弹卡💣，跳过收取")
+
+                // 🆕【核心修改】检查炸弹卡 及 阈值判断逻辑
+                if (!hasProtection && hasBombCard(userHomeObj, serverTime)) {
+                    var bypassBomb = false
+                    val bombLimit = collectBombEnergyLimit?.value ?: 0
+
+                    // 如果设定了阈值(>0)，检查是否有大额能量球值得冒险
+                    if (bombLimit > 0) {
+                        val bubbles = userHomeObj.optJSONArray("bubbles")
+                        if (bubbles != null) {
+                            for (i in 0 until bubbles.length()) {
+                                val bubble = bubbles.getJSONObject(i)
+                                // 获取能量值 (fullEnergy通常是当前可收取的能量)
+                                val energy = bubble.optInt("fullEnergy", 0)
+                                if (energy >= bombLimit) {
+                                    bypassBomb = true
+                                    Log.record(TAG, "[$userName] 发现大能量球($energy g) >= 炸弹阈值($bombLimit g)，无视炸弹卡强行收取！💥")
+                                    break
+                                }
+                            }
+                        }
+                    }
+
+                    if (!bypassBomb) {
+                        hasProtection = true
+                        Log.record(TAG, "[$userName]开着炸弹卡💣，跳过收取")
+                    }
                 }
             }
-            // 7. 只有没有保护时才收集当前可用能量
+
+            // 6. 只有没有保护(或无视保护)时才收集当前可用能量
             if (!hasProtection) {
                 collectVivaEnergy(userId, userHomeObj, availableBubbles, fromTag)
             }
@@ -1543,7 +1609,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
             Log.printStackTrace(TAG, "collectUserEnergy JSON解析错误", e)
             return null
         } catch (e: NullPointerException) {
-            Log.printStackTrace(TAG, "collectUserEnergy JSON解析错误", e)
+            Log.printStackTrace(TAG, "collectUserEnergy 空指针异常", e)
             return null
         } catch (t: Throwable) {
             Log.printStackTrace(TAG, "collectUserEnergy 出现异常", t)
@@ -1576,7 +1642,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
      * @param userHomeObj      用户主页的JSON对象
      * @param serverTime       服务器时间
      * @param availableBubbles 可收集的能量球ID列表
-     * @param userId          用户ID
+     * @param userId           用户ID
      * @throws JSONException JSON解析异常
      */
     @Throws(JSONException::class)
@@ -1586,6 +1652,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
         availableBubbles: MutableList<Long>,
         userId: String?
     ) {
+        // 1. 获取能量球数组（兼容组队模式）
         val jaBubbles = if (isTeam(userHomeObj)) {
             userHomeObj.optJSONObject("teamHomeResult")
                 ?.optJSONObject("mainMember")
@@ -1593,11 +1660,14 @@ class AntForest : ModelTask(), EnergyCollectCallback {
         } else {
             userHomeObj.optJSONArray("bubbles")
         } ?: JSONArray()
+
         if (jaBubbles.length() == 0) return
 
+        // 2. 获取用户名（用于日志）
         val userName = getAndCacheUserName(userId, userHomeObj, null)
         var waitingBubblesCount = 0
 
+        // 3. 保护罩/炸弹卡日志记录（仅针对好友，仅做显示，实际拦截在collectEnergy）
         val isSelf = selfId == userId
         var protectionLog = ""
         if (!isSelf) {
@@ -1617,6 +1687,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
             }
         }
 
+        // 4. 遍历能量球
         for (i in 0..<jaBubbles.length()) {
             val bubble = jaBubbles.getJSONObject(i)
             val bubbleId = bubble.getLong("id")
@@ -1626,13 +1697,36 @@ class AntForest : ModelTask(), EnergyCollectCallback {
 
             when (status) {
                 CollectStatus.AVAILABLE -> {
-                    // 可收集的能量球
-                    availableBubbles.add(bubbleId)
+                    // 🆕【核心修改】：如果是自己，根据配置的阈值决定是否收取
+                    if (isSelf) {
+                        val type = collectSelfEnergyType?.value ?: CollectSelfType.ALL
+                        val threshold = collectSelfEnergyThreshold?.value ?: 0
+                        var shouldCollect = true
+
+                        when (type) {
+                            CollectSelfType.OVER_THRESHOLD -> {
+                                // 模式：大于阈值才收
+                                if (bubbleCount < threshold) shouldCollect = false
+                            }
+                            CollectSelfType.BELOW_THRESHOLD -> {
+                                // 模式：小于阈值才收
+                                if (bubbleCount > threshold) shouldCollect = false
+                            }
+                            // CollectSelfType.ALL -> 默认 true
+                        }
+
+                        if (shouldCollect) {
+                            availableBubbles.add(bubbleId)
+                        }
+                    } else {
+                        // 好友的能量直接添加，不进行阈值判断
+                        availableBubbles.add(bubbleId)
+                    }
                 }
 
                 CollectStatus.WAITING -> {
                     if (bubbleCount <= 0) {
-                         Log.record(TAG, "跳过数量为[$bubbleId]的等待能量球的蹲点任务")
+                        Log.record(TAG, "跳过数量为[$bubbleId]的等待能量球的蹲点任务")
                         continue
                     }
                     // 等待成熟的能量球，添加到蹲点队列
@@ -1661,7 +1755,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                             produceTime = produceTime,
                             fromTag = "蹲点收取"
                         )
-                         Log.record(
+                        Log.record(
                             TAG,
                             "添加蹲点: [$userName] 能量球[$bubbleId] 将在[${TimeUtil.getCommonDate(produceTime)}]成熟$protectionLog"
                         )
@@ -1675,10 +1769,13 @@ class AntForest : ModelTask(), EnergyCollectCallback {
             }
         }
 
-        // 打印调试信息
-         Log.record(TAG, "[$userName] 可收集能量球: ${availableBubbles.size}个")
-        if (waitingBubblesCount > 0) {
-             Log.record(TAG, "[$userName] 等待成熟能量球: ${waitingBubblesCount}个")
+        // 5. 打印调试信息
+        // 只有当有可收取的球，或者有等待的球时才打印，避免刷屏
+        if (availableBubbles.isNotEmpty() || waitingBubblesCount > 0) {
+            Log.record(TAG, "[$userName] 可收集能量球: ${availableBubbles.size}个")
+            if (waitingBubblesCount > 0) {
+                Log.record(TAG, "[$userName] 等待成熟能量球: ${waitingBubblesCount}个")
+            }
         }
     }
 
@@ -2745,7 +2842,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                         if (!extInfo.isEmpty()) {
                             val extInfoObj = JSONObject(extInfo)
                             val leftEnergy = extInfoObj.optString("leftEnergy", "0").toDouble()
-                            if (leftEnergy > 3000 || ("true" == extInfoObj.optString(
+                            if (leftEnergy > 20000 || ("true" == extInfoObj.optString(
                                     "overLimitToday",
                                     "false"
                                 ) && leftEnergy >= 1)
@@ -4910,6 +5007,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
 
                 // 设置本次执行的总局数
                 WhackMole.setTotalGames(games)
+                WhackMole.setMoleCount(whackMoleMoleCount?.value ?: 15)
 
                 Log.record(
                     TAG,
