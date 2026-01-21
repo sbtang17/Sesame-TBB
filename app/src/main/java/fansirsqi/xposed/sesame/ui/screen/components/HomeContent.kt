@@ -76,6 +76,7 @@ fun HomeContent(
         }
 
         // 2. 服务权限
+       if (false) {
         item {
             ServicesStatusCard(
                 status = serviceStatus,
@@ -87,6 +88,7 @@ fun HomeContent(
                 }
             )
         }
+    }
 
         // 3. 设备信息
         item {
