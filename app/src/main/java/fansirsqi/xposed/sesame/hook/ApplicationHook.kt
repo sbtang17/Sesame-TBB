@@ -84,6 +84,7 @@ import fansirsqi.xposed.sesame.util.maps.UserMap
 import fansirsqi.xposed.sesame.util.maps.UserMap.currentUid
 import io.github.libxposed.api.XposedInterface
 import io.github.libxposed.api.XposedModuleInterface.PackageLoadedParam
+import fansirsqi.xposed.sesame.hook.internal.AlipayMiniMarkHelper
 import org.luckypray.dexkit.DexKitBridge
 import java.io.File
 import java.lang.AutoCloseable
