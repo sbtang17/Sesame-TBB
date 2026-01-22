@@ -378,7 +378,6 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 10000
             ).also { collectSelfEnergyThreshold = it }
         )
-
         modelFields.addField(
             IntegerModelField(
                 "robExpandCardLimt",
@@ -1748,10 +1747,22 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                         val threshold = collectSelfEnergyThreshold?.value ?: 0
                         var shouldCollect = true
 
+                        // 获取是否还能被偷取的标记 (保底状态下该值为 false)
+                        val canBeRobbedAgain = bubble.optBoolean("canBeRobbedAgain", false)
+
                         when (type) {
                             CollectSelfType.OVER_THRESHOLD -> {
                                 // 模式：大于阈值才收
-                                if (bubbleCount < threshold) shouldCollect = false
+                                // 修改逻辑：只有当 [小于阈值] 且 [还能被偷] 时才跳过
+                                // 如果已经到底了(不能被偷)，即使小于阈值也应该收回来，防止浪费
+                                if (bubbleCount < threshold && canBeRobbedAgain) {
+                                    shouldCollect = false
+                                    // 可以选择性记录日志，避免刷屏
+                                    // Log.record(TAG, "跳过自己能量[$bubbleCount g] (未达阈值$threshold 且仍可被偷)")
+                                } else if (bubbleCount < threshold && !canBeRobbedAgain) {
+                                    // 此时虽然小于阈值，但已经是保底能量，强制收取
+                                    Log.record(TAG, "触发保底收取：能量[$bubbleCount g] < 阈值[$threshold g]，但已无法被偷，强制收取")
+                                }
                             }
 
                             CollectSelfType.BELOW_THRESHOLD -> {
