@@ -1,4 +1,4 @@
-name: 📦Auto Build for N
+name: 📦MyAction
 # run-name: 📦 ${{ github.actor }} @ Github Action
 
 on:
