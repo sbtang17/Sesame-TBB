@@ -11,8 +11,11 @@ import fansirsqi.xposed.sesame.entity.OtherEntityProvider.listEcoLifeOptions
 import fansirsqi.xposed.sesame.entity.OtherEntityProvider.listHealthcareOptions
 import fansirsqi.xposed.sesame.entity.VitalityStore
 import fansirsqi.xposed.sesame.entity.VitalityStore.Companion.getNameById
+import fansirsqi.xposed.sesame.util.GameTask
 import fansirsqi.xposed.sesame.hook.RequestManager.requestString
 import fansirsqi.xposed.sesame.hook.Toast
+import fansirsqi.xposed.sesame.hook.internal.AlipayMiniMarkHelper
+import fansirsqi.xposed.sesame.hook.internal.AuthCodeHelper
 import fansirsqi.xposed.sesame.hook.rpc.intervallimit.FixedOrRangeIntervalLimit
 import fansirsqi.xposed.sesame.hook.rpc.intervallimit.IntervalLimit
 import fansirsqi.xposed.sesame.hook.rpc.intervallimit.RpcIntervalLimit.addIntervalLimit
@@ -800,6 +803,9 @@ class AntForest : ModelTask(), EnergyCollectCallback {
     override suspend fun runSuspend() {
         val runStartTime = System.currentTimeMillis()
         Log.record(TAG, "🌲🌲🌲 森林主任务开始执行 🌲🌲🌲")
+        val authCode = AuthCodeHelper.getAuthCode("2060170000363691" )
+        val MiniMark = AlipayMiniMarkHelper.getAlipayMiniMark("2060170000363691" ,"1.0.1")
+        Log.record(TAG, "游戏 2060170000363691 获取到的 authCode: $authCode   Mark:$MiniMark")
         try {
             // 每次运行时检查并更新计数器
             checkAndUpdateCounters()
@@ -981,6 +987,9 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                     chouChouLe.chouChouLe()
                     tc.countDebug("抽抽乐")
                 }
+
+                doforestgame()
+
 
                 tc.stop()
             }
@@ -1681,7 +1690,41 @@ class AntForest : ModelTask(), EnergyCollectCallback {
     }
 
     /**
+     * {{ 新增辅助方法：统一判断是否满足收自己能量的阈值条件 }}
+     * @param bubbleCount 能量球数值
+     * @param canBeRobbedAgain 是否可被再次偷取（保底状态为false）
+     */
+    private fun shouldCollectSelfBubble(bubbleCount: Int, canBeRobbedAgain: Boolean): Boolean {
+        val type = collectSelfEnergyType?.value ?: CollectSelfType.ALL
+        val threshold = collectSelfEnergyThreshold?.value ?: 0
+
+        return when (type) {
+            CollectSelfType.OVER_THRESHOLD -> {
+                // 模式：大于阈值才收
+                // 逻辑：只有当 [小于阈值] 且 [还能被偷] 时才跳过 (不收)
+                // 如果已经到底了(!canBeRobbedAgain)，即使小于阈值也应该收回来，防止浪费
+                if (bubbleCount < threshold && canBeRobbedAgain) {
+                    false
+                } else {
+                    // 满足阈值 OR 触发保底收取 (能量很少了，朋友偷不走，必须自己收，不然就浪费了)
+                    if (bubbleCount < threshold && !canBeRobbedAgain) {
+                        Log.record(TAG, "触发保底收取：能量[$bubbleCount g] < 阈值[$threshold g]，但已无法被偷，强制收取")
+                    }
+                    true
+                }
+            }
+            CollectSelfType.BELOW_THRESHOLD -> {
+                // 模式：小于阈值才收
+                bubbleCount < threshold
+            }
+            // CollectSelfType.ALL -> 默认 true
+            else -> true
+        }
+    }
+
+    /**
      * 提取能量球状态
+     * {{ 修改了该方法，在 AVAILABLE 和 WAITING 分支增加了阈值判断 }}
      *
      * @param userHomeObj      用户主页的JSON对象
      * @param serverTime       服务器时间
@@ -1741,38 +1784,12 @@ class AntForest : ModelTask(), EnergyCollectCallback {
 
             when (status) {
                 CollectStatus.AVAILABLE -> {
-                    // 🆕【核心修改】：如果是自己，根据配置的阈值决定是否收取
+                    // 🆕【修改点1】：可收取状态，统一调用阈值判断
                     if (isSelf) {
-                        val type = collectSelfEnergyType?.value ?: CollectSelfType.ALL
-                        val threshold = collectSelfEnergyThreshold?.value ?: 0
-                        var shouldCollect = true
-
                         // 获取是否还能被偷取的标记 (保底状态下该值为 false)
                         val canBeRobbedAgain = bubble.optBoolean("canBeRobbedAgain", false)
 
-                        when (type) {
-                            CollectSelfType.OVER_THRESHOLD -> {
-                                // 模式：大于阈值才收
-                                // 修改逻辑：只有当 [小于阈值] 且 [还能被偷] 时才跳过
-                                // 如果已经到底了(不能被偷)，即使小于阈值也应该收回来，防止浪费
-                                if (bubbleCount < threshold && canBeRobbedAgain) {
-                                    shouldCollect = false
-                                    // 可以选择性记录日志，避免刷屏
-                                    // Log.record(TAG, "跳过自己能量[$bubbleCount g] (未达阈值$threshold 且仍可被偷)")
-                                } else if (bubbleCount < threshold && !canBeRobbedAgain) {
-                                    // 此时虽然小于阈值，但已经是保底能量，强制收取
-                                    Log.record(TAG, "触发保底收取：能量[$bubbleCount g] < 阈值[$threshold g]，但已无法被偷，强制收取")
-                                }
-                            }
-
-                            CollectSelfType.BELOW_THRESHOLD -> {
-                                // 模式：小于阈值才收
-                                if (bubbleCount > threshold) shouldCollect = false
-                            }
-                            // CollectSelfType.ALL -> 默认 true
-                        }
-
-                        if (shouldCollect) {
+                        if (shouldCollectSelfBubble(bubbleCount, canBeRobbedAgain)) {
                             availableBubbles.add(bubbleId)
                         }
                     } else {
@@ -1786,6 +1803,19 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                         Log.record(TAG, "跳过数量为[$bubbleId]的等待能量球的蹲点任务")
                         continue
                     }
+
+                    // 🆕【修改点2】：蹲点任务也必须严格遵循收自己能量的阈值配置
+                    if (isSelf) {
+                        // 对于等待中的球，我们暂时假设它是可被偷的(canBeRobbedAgain=true)以进行严格检查
+                        // 逻辑：如果只收>20g，现在有个5g的在等待，应该跳过，不加入蹲点队列
+                        // 如果有明确的canBeRobbedAgain字段则使用，否则默认为true
+                        val canBeRobbed = bubble.optBoolean("canBeRobbedAgain", true)
+                        if (!shouldCollectSelfBubble(bubbleCount, canBeRobbed)) {
+                            // 可选：Log.record(TAG, "跳过等待能量[$bubbleCount g] (不满足阈值配置)")
+                            continue
+                        }
+                    }
+
                     // 等待成熟的能量球，添加到蹲点队列
                     val produceTime = bubble.optLong("produceTime", 0L)
                     if (produceTime > 0 && produceTime > serverTime) {
@@ -2857,7 +2887,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
             for (i in 0..<usingUserProps.length()) {
                 val userUsingProp = usingUserProps.getJSONObject(i)
                 val propGroup = userUsingProp.getString("propGroup")
-                val propName = userUsingProp.getString("propName")
+                val propName = userUsingProp.optString("propName")
                 when (propGroup) {
                     "doubleClick" -> {
                         doubleEndTime = userUsingProp.getLong("endTime")
@@ -2896,6 +2926,9 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                                 }
                             }
                         }
+                    }
+                    else -> {
+                         Log.record(TAG, "跳过非目标道具:$userUsingProp")
                     }
                 }
             }
@@ -4425,17 +4458,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 val propName = jo.getJSONObject("propConfigVO").getString("propName")
                 if (usePropBag(jo)) {
                     Log.forest("使用加速卡🌪[$propName]")
-                    // 🚀 使用加速卡后，等待1秒让能量球加速成熟，然后收取3次
-                    Log.record(TAG, "🚀 加速卡使用成功，等待3秒让能量球成熟...")
-                    GlobalThreadPools.sleepCompat(1000L)
-
-                    // 连续收取3次，确保收到加速后的能量
-                    repeat(3) { index ->
-                        Log.record(TAG, "🎯 第${index + 1}次收取自己能量...")
-                        collectSelfEnergyImmediately("加速卡第${index + 1}次")
-                        if (index < 2) GlobalThreadPools.sleepCompat(1000L)
-                    }
-                    Log.record(TAG, "✅ 加速卡自收能量完成（共3次）")
+                    collectSelfEnergyImmediately("加速卡")
                 }
             } else {
                 Log.record(TAG, "背包中无可用加速卡")
@@ -4453,8 +4476,6 @@ class AntForest : ModelTask(), EnergyCollectCallback {
             val selfHomeObj = querySelfHome()
             if (selfHomeObj != null) {
                 Log.record(TAG, "🎯 $tag：开始收取自己能量...")
-
-                // 使用快速收取模式，跳过道具检查
                 val availableBubbles: MutableList<Long> = ArrayList()
                 val serverTime = selfHomeObj.optLong("now", System.currentTimeMillis())
                 extractBubbleInfo(selfHomeObj, serverTime, availableBubbles, UserMap.currentUid)
@@ -4462,11 +4483,7 @@ class AntForest : ModelTask(), EnergyCollectCallback {
                 if (availableBubbles.isNotEmpty()) {
                     Log.record(TAG, "🎯 $tag：找到${availableBubbles.size}个可收能量球")
                     collectVivaEnergy(UserMap.currentUid, selfHomeObj, availableBubbles, "加速卡$tag", skipPropCheck = true)
-                } else {
-                    Log.record(TAG, "🎯 $tag：无可收能量球")
                 }
-            } else {
-                Log.error(TAG, "❌ $tag：获取自己主页信息失败")
             }
         } catch (e: Exception) {
             Log.printStackTrace(TAG, "collectSelfEnergyImmediately err", e)
@@ -4587,6 +4604,92 @@ class AntForest : ModelTask(), EnergyCollectCallback {
         }
     }
 
+
+    fun doforestgame() {
+        try {
+            val response = AntForestRpcCall.queryGameList()
+            val jo = JSONObject(response)
+
+            // 验证请求是否成功
+            if (!ResChecker.checkRes(TAG, jo)) {
+                Log.error(TAG, "queryGameList 失败: ${jo.optString("desc")}")
+                return
+            }
+
+            val drawRights = jo.optJSONObject("gameCenterDrawRights")
+            if (drawRights != null) {
+                val perTime = drawRights.optInt("quotaPerTime", 100)
+
+                // 换算实际宝箱次数
+                val canUseCount = drawRights.optInt("quotaCanUse") / perTime
+                val limitCount = drawRights.optInt("quotaLimit") / perTime
+                val usedCount = drawRights.optInt("usedQuota") / perTime
+
+                //Log.record(TAG, "游戏中心状态: 待开 $canUseCount 个, 已得 $usedCount/$limitCount")
+
+                // 1. 处理待开启奖励 (批量开启)
+                if (canUseCount > 0) {
+                    Log.record(TAG, "正在一次性开启 $canUseCount 个宝箱...")
+                    val drawResStr = AntForestRpcCall.drawGameCenterAward(canUseCount)
+                    if(!ResChecker.checkRes(TAG, drawResStr)){
+                        //Log.error(TAG,"开启宝箱失败 Res:$drawResStr")
+                        return
+                    }
+                    val drawJo = JSONObject(drawResStr)
+                    val resData = drawJo.optJSONObject("resData") ?: drawJo
+                    if (resData.optString("desc") == "success") {
+                        val awardList = resData.optJSONArray("gameCenterDrawAwardList")
+
+                        var totalEnergy = 0
+                        val otherAwards = mutableListOf<String>()
+
+                        if (awardList != null) {
+                            for (i in 0 until awardList.length()) {
+                                val award = awardList.getJSONObject(i)
+                                val type = award.optString("awardType")
+                                val name = award.optString("awardName")
+                                val count = award.optInt("awardCount")
+
+                                if (type == "ENERGY") {
+                                    totalEnergy += count
+                                } else {
+                                    otherAwards.add("${name}x${count}")
+                                }
+                            }
+                        }
+
+                        // 输出统计结果
+                        val logMsg = StringBuilder("[开宝箱] ")
+                        if (totalEnergy > 0) logMsg.append("获得能量: ${totalEnergy}g")
+                        if (otherAwards.isNotEmpty()) {
+                            if (totalEnergy > 0) logMsg.append(", ")
+                            logMsg.append("其他: ${otherAwards.joinToString("/")}")
+                        }
+                        Log.forest(logMsg.toString())
+                    } else {
+                        //Log.error(TAG, "领奖请求失败: $drawResStr")
+                    }
+                }
+
+                // 2. 判断是否需要刷任务 (接你之前的逻辑)
+                val remainToTask = limitCount - usedCount
+                if (remainToTask > 0) {
+
+                        //Log.record(TAG, "任务进度未满，准备执行 $remainToTask 次上报...")
+                GameTask.Forest_slxcc.report(remainToTask)
+
+
+                } else {
+                   // Log.record(TAG, "今日游戏中心任务已满额")
+                }
+            }
+
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Log.printStackTrace(TAG, "doforestgame 流程异常", t)
+        }
+    }
     /**
      * 收取状态的枚举类型
      */

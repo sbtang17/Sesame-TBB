@@ -193,37 +193,45 @@ jobs:
       #     # 清理临时文件
       #     rm "$MESSAGE_FILE"
 
-      # - name: 🚀 Upload Assets to Source Release
-      #   if: github.event_name == 'release' && github.event.action == 'published'
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     name: ${{ github.event.release.tag_name || steps.extract_info.outputs.version }}
-      #     files: |
-      #       ${{ steps.extract_apks.outputs.signed_arm64 }}
-      #       ${{ steps.extract_apks.outputs.signed_armv7 }}
-      #       ${{ steps.extract_apks.outputs.signed_x86 }}
-      #       ${{ steps.extract_apks.outputs.signed_x86_64 }}
-      #       ${{ steps.extract_apks.outputs.signed_universal }}
-      #       CHECKSUMS-Sesame-arm64-v8a-${{ steps.extract_info.outputs.version }}.apk.sha256
-      #       CHECKSUMS-Sesame-armeabi-v7a-${{ steps.extract_info.outputs.version }}.apk.sha256
-      #       CHECKSUMS-Sesame-x86-${{ steps.extract_info.outputs.version }}.apk.sha256
-      #       CHECKSUMS-Sesame-x86_64-${{ steps.extract_info.outputs.version }}.apk.sha256
-      #       CHECKSUMS-Sesame-universal-${{ steps.extract_info.outputs.version }}.apk.sha256
-      #     tag_name: ${{ steps.extract_info.outputs.version}}
-      #     draft: false
-      #     append_body: true
-      #     make_latest: true
-      #     generate_release_notes: false
-      #     body: |
-      #       ## ✨What's Changed
-
-      #       > ## 下载说明
-      #       <b>- arm64-v8a:</b> 适用于64位ARM设备 (主流新手机)
-      #       <b>- armeabi-v7a:</b> 适用于32位ARM设备 (旧款手机)
-      #       <b>- x86 / x86_64:</b> 主要用于PC上的安卓模拟器
-      #       <b>- universal:</b> 通用版 (不确定时使用，体积较大)
-      #       >
-      #       > **如果不确定，请下载 `universal` 版本。**
+      - name: 🚀 Upload Assets to Source Release
+        if: github.event_name == 'release' && github.event.action == 'published'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.event.release.tag_name || steps.extract_info.outputs.version }}
+          files: |
+            ${{ steps.extract_apks.outputs.signed_arm64 }}
+            ${{ steps.extract_apks.outputs.signed_armv7 }}
+            ${{ steps.extract_apks.outputs.signed_x86 }}
+            ${{ steps.extract_apks.outputs.signed_x86_64 }}
+            ${{ steps.extract_apks.outputs.signed_universal }}
+            CHECKSUMS-Sesame-arm64-v8a-${{ steps.extract_info.outputs.version }}.apk.sha256
+            CHECKSUMS-Sesame-armeabi-v7a-${{ steps.extract_info.outputs.version }}.apk.sha256
+            CHECKSUMS-Sesame-x86-${{ steps.extract_info.outputs.version }}.apk.sha256
+            CHECKSUMS-Sesame-x86_64-${{ steps.extract_info.outputs.version }}.apk.sha256
+            CHECKSUMS-Sesame-universal-${{ steps.extract_info.outputs.version }}.apk.sha256
+          tag_name: ${{ steps.extract_info.outputs.version}}
+          draft: false
+          append_body: true
+          make_latest: true
+          generate_release_notes: false
+          body: |
+            
+            > [!Important]
+            >
+            > ## 模块的蓬勃生机离不开社区与群组,感谢各位的贡献🎉
+  
+            > [!NOTE]
+            > 你可以尝试点击下方图标加入我们的组织
+  
+            [![Telegram-Channel](https://img.shields.io/badge/Sesame--TK-nul?&logo=Telegram&label=Telegram-Channel&labelColor=fff&link=https%3A%2F%2Ft.me%2FSesame_TK_Channel)](https://t.me/Sesame_TK_Channel)   [![Telegram-Group](https://img.shields.io/badge/Sesame--TK-nul?&logo=Telegram&label=Telegram-Group&labelColor=fff&link=https%3A%2F%2Ft.me%2Ffansirsqi_xposed_sesame)](https://t.me/fansirsqi_xposed_sesame)   [![Static Badge](https://img.shields.io/badge/QQ--Channel-nul?style=flat&logo=qq&labelColor=%23fff&logoSize=12&label=%E8%85%BE%E8%AE%AF%E9%A2%91%E9%81%93&link=https%3A%2F%2Fpd.qq.com%2Fs%2Fhdvws4vuf)](https://pd.qq.com/s/hdvws4vuf)   [![Static Badge](https://img.shields.io/badge/QQ--Group-nul?style=flat&logo=qq&logoSize=12&label=QQ%E7%BE%A4%E8%81%8A&labelColor=%23fff&link=https%3A%2F%2Fqm.qq.com%2Fq%2FAj0Xby6AGQ)](https://qm.qq.com/q/Aj0Xby6AGQ)
+  
+            > ## 下载说明
+            <b>- arm64-v8a:</b> 适用于64位ARM设备 (主流新手机)
+            <b>- armeabi-v7a:</b> 适用于32位ARM设备 (旧款手机)
+            <b>- x86 / x86_64:</b> 主要用于PC上的安卓模拟器
+            <b>- universal:</b> 通用版 (不确定时使用，体积较大)
+            >
+            > **如果不确定，请下载 `universal` 版本。**
 
       # - name: 🔁 Sync Release to Target Repository
       #   if: github.event_name == 'release' && github.event.action == 'published'

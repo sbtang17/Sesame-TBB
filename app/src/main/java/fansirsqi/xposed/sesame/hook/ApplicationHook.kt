@@ -28,7 +28,9 @@ import fansirsqi.xposed.sesame.entity.AlipayVersion
 import fansirsqi.xposed.sesame.hook.Toast.show
 import fansirsqi.xposed.sesame.hook.TokenHooker.start
 import fansirsqi.xposed.sesame.hook.XposedEnv.processName
+import fansirsqi.xposed.sesame.hook.internal.AlipayMiniMarkHelper
 import fansirsqi.xposed.sesame.hook.internal.LocationHelper
+import fansirsqi.xposed.sesame.hook.internal.AuthCodeHelper
 import fansirsqi.xposed.sesame.hook.internal.SecurityBodyHelper
 import fansirsqi.xposed.sesame.hook.keepalive.SmartSchedulerManager
 import fansirsqi.xposed.sesame.hook.keepalive.SmartSchedulerManager.cleanup
@@ -56,6 +58,7 @@ import fansirsqi.xposed.sesame.task.MainTask
 import fansirsqi.xposed.sesame.task.MainTask.Companion.newInstance
 import fansirsqi.xposed.sesame.task.ModelTask.Companion.stopAllTask
 import fansirsqi.xposed.sesame.task.TaskRunnerAdapter
+import fansirsqi.xposed.sesame.task.antForest.AntForest
 import fansirsqi.xposed.sesame.task.customTasks.CustomTask
 import fansirsqi.xposed.sesame.task.customTasks.ManualTask
 import fansirsqi.xposed.sesame.task.customTasks.ManualTaskModel
@@ -236,6 +239,8 @@ class ApplicationHook {
                         SecurityBodyHelper.init(classLoader!!)
                         AlipayMiniMarkHelper.init(classLoader!!)
                         LocationHelper.init(classLoader!!)
+                        AuthCodeHelper.init(classLoader!!)
+                        AuthCodeHelper.getAuthCode("2021005114632037" )
 
                         initVersionInfo(packageName)
                         loadLibs()

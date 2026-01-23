@@ -1,0 +1,91 @@
+name: 📦Auto Build for N
+# run-name: 📦 ${{ github.actor }} @ Github Action
+
+on:
+  push:
+    branches: [ "develop" ]
+  pull_request:
+    branches: [ "develop" ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⏰ Set Timezone to Asia/Shanghai
+        run: |
+          sudo timedatectl set-timezone Asia/Shanghai
+          echo "Current time: $(date)"
+
+      - name: 👨🏻‍💻 Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
+      - name: ☕ Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "zulu"
+          cache: gradle
+      - name: 🤝 Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+          gradle-version: wrapper
+
+      - name: ☎️ Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: 🔥 Build with Gradle
+        run: ./gradlew assembleRelease -Pversion=${{ github.ref_name }}
+
+      - name: 📊 Locate APKs and Set Outputs
+        id: locate_apks
+        run: |
+          release_dir="app/build/outputs/apk/release"
+          arm64_apk=$(find "$release_dir" -name "*-arm64-v8a-*.apk" | head -n 1)
+          echo "arm64_apk=$arm64_apk" >> $GITHUB_OUTPUT
+
+      - name: ⏳ Copy APKs to staging for signing
+        run: |
+          mkdir -p app/build/outputs/apk/all
+          cp "${{ steps.locate_apks.outputs.arm64_apk }}" app/build/outputs/apk/all/
+
+      - name: 🔐 Sign APKs
+        id: sign_apks
+        uses: ilharp/sign-android-release@v2
+        with:
+          releaseDir: app/build/outputs/apk/all
+          signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
+          keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          buildToolsVersion: 36.0.0
+
+      - name: 📦 Extract Signed APK Paths
+        id: extract_apks
+        run: |
+          IFS=':' read -r -a files <<< "${{ steps.sign_apks.outputs.signedFiles }}"
+          for file in "${files[@]}"; do
+            if [[ "$file" == *arm64-v8a* ]]; then
+              echo "signed_arm64=$file" >> $GITHUB_OUTPUT
+            fi
+          done
+
+      - name: 🚀 Upload APK - arm64-v8a
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-arm64-v8a
+          path: ${{ steps.extract_apks.outputs.signed_arm64 }}
+
+      - name: 🛠️ Extract file names and version
+        id: extract_info
+        run: |
+          arm64_file=$(basename "${{ steps.extract_apks.outputs.signed_arm64 }}")
+          version="${{ github.ref_name }}"
+          echo "arm64_file=$arm64_file" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $GITHUB_OUTPUT
