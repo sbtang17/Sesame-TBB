@@ -3,7 +3,7 @@ package fansirsqi.xposed.sesame.task.other.haojia
 import fansirsqi.xposed.sesame.util.GlobalThreadPools
 import fansirsqi.xposed.sesame.util.Log
 import fansirsqi.xposed.sesame.util.ResChecker
-import fansirsqi.xposed.sesame.util.TaskBlacklist // 引入黑名单工具
+import fansirsqi.xposed.sesame.util.TaskBlacklist
 import fansirsqi.xposed.sesame.util.TimeUtil
 import org.json.JSONObject
 
@@ -23,6 +23,7 @@ object HaoJiaWuyou {
 
     /**
      * 处理签到
+     * 修正：增加对 SIG_DUPLICATED_SIGN_IN 的判断，避免误报失败
      */
     private fun doSignIn() {
         try {
@@ -30,11 +31,24 @@ object HaoJiaWuyou {
             if (!ResChecker.checkRes(TAG, resp)) return
 
             val jo = JSONObject(resp)
+            // 获取签到组件
             val component = jo.optJSONObject("components")
                 ?.optJSONObject("independent_component_sign_in_00966139_independent_component_sign_in_recall")
 
-            if (component == null || !component.optBoolean("isSuccess")) {
-                Log.record(TAG, "签到查询失败")
+            if (component == null) {
+                Log.record(TAG, "签到查询失败: 未找到组件")
+                return
+            }
+
+            // 检查组件状态，如果失败，判断是否是因为重复签到
+            if (!component.optBoolean("isSuccess")) {
+                val errorCode = component.optString("errorCode")
+                val errorMsg = component.optString("errorMsg")
+                if (errorCode == "SIG_DUPLICATED_SIGN_IN") {
+                    Log.record(TAG, "今日已签到 (重复签到)")
+                    return
+                }
+                Log.record(TAG, "签到组件异常: $errorMsg")
                 return
             }
 
@@ -46,7 +60,7 @@ object HaoJiaWuyou {
                 val templateInfo = orderInfo.optJSONObject("playSignInTemplateInfo") ?: return
                 val signCode = templateInfo.optString("code")
 
-                // 检查今日是否已签到
+                // 双重检查：通过记录列表检查今日是否已签到
                 val todayStr = TimeUtil.getDateStrNoSplite() // 格式 yyyyMMdd
                 val recordList = orderInfo.optJSONArray("signInRecordInfoList")
                 var signed = false
@@ -65,14 +79,32 @@ object HaoJiaWuyou {
                 } else if (signCode.isNotEmpty()) {
                     Log.record(TAG, "开始签到...")
                     val signResp = HaoJiaRpcCall.doSignIn(signCode)
-                    if (ResChecker.checkRes(TAG, signResp) && signResp.contains("\"success\":true")) {
-                        Log.record(TAG, "签到成功")
+
+                    // 深度解析签到结果
+                    val signJo = JSONObject(signResp)
+                    val signComp = signJo.optJSONObject("components")
+                        ?.optJSONObject("independent_component_sign_in_00966139_independent_component_sign_in")
+
+                    val isRpcSuccess = ResChecker.checkRes(TAG, signResp) && signResp.contains("\"success\":true")
+                    val isDuplicate = signComp?.optString("errorCode") == "SIG_DUPLICATED_SIGN_IN"
+
+                    if (isRpcSuccess) {
+                        // 即使RPC成功，也要看组件内部是否真的成功
+                        if (signComp != null && signComp.optBoolean("isSuccess")) {
+                            Log.record(TAG, "签到成功")
+                        } else if (isDuplicate) {
+                            Log.record(TAG, "签到成功 (重复签到)")
+                        } else {
+                            val msg = signComp?.optString("errorMsg") ?: "未知错误"
+                            Log.record(TAG, "签到异常: $msg")
+                        }
+                    } else if (isDuplicate) {
+                        Log.record(TAG, "签到成功 (重复签到)")
                     } else {
                         Log.record(TAG, "签到失败: $signResp")
                     }
                 }
             }
-
         } catch (e: Exception) {
             Log.printStackTrace(TAG, e)
         }
@@ -80,6 +112,7 @@ object HaoJiaWuyou {
 
     /**
      * 处理任务
+     * 修正：过滤 eventPush 类型任务，校验 rewardStatus 确保真实发奖
      */
     private fun doTasks() {
         try {
@@ -105,6 +138,7 @@ object HaoJiaWuyou {
                 val taskCode = task.optString("code")
                 val taskStatus = task.optString("taskStatus") // init:未完成, finish:已完成
                 val browseTime = displayInfo?.optInt("browseTime", 0) ?: 0
+                val advanceType = task.optString("advanceType") // userPush:可做, eventPush:需后台事件
 
                 // 1. 黑名单检查
                 if (TaskBlacklist.isTaskInBlacklist(taskName)) {
@@ -113,9 +147,15 @@ object HaoJiaWuyou {
                 }
 
                 if (taskStatus == "init" && taskCode.isNotEmpty()) {
-                    // 2. 关键词过滤（可选，根据需求保留或移除）
-                    if (taskName.contains("开通") || taskName.contains("办理") || taskName.contains("咨询")) {
-                        // Log.record(TAG, "跳过任务(关键词过滤): $taskName")
+                    // 2. 关键词与类型过滤
+                    // eventPush 通常需要开卡、买金、充值等真实操作，脚本无法模拟，跳过以净化日志
+                    if (advanceType == "eventPush" ||
+                        taskName.contains("开通") || taskName.contains("办理") ||
+                        taskName.contains("咨询") || taskName.contains("黄金") ||
+                        taskName.contains("流量") || taskName.contains("话费") ||
+                        taskName.contains("理财") || taskName.contains("保险") ||
+                        taskName.contains("购车")) {
+                        // Log.record(TAG, "跳过任务(无法自动完成): $taskName")
                         continue
                     }
 
@@ -133,16 +173,30 @@ object HaoJiaWuyou {
                     val applyResp = HaoJiaRpcCall.applyTask(taskCode)
                     // 解析结果
                     val resJo = JSONObject(applyResp)
-                    // 注意：这里的 ResChecker 只是基础检查，具体业务成功需要看 internal result
+
                     if (ResChecker.checkRes(TAG, applyResp)) {
                         val applyComp = resJo.optJSONObject("components")
                             ?.optJSONObject("independent_component_task_reward_00793835_independent_component_task_reward_apply")
 
                         if (applyComp != null && applyComp.optBoolean("isSuccess")) {
-                            Log.record(TAG, "任务完成: $taskName")
+                            // 修正：深度检查 rewardStatus，防止虚假完成
+                            val applyContent = applyComp.optJSONObject("content")
+                            val claimedTask = applyContent?.optJSONObject("claimedTask")
+
+                            // 不同的返回结构中，rewardStatus 可能在不同位置
+                            val rewardStatus = claimedTask?.optString("rewardStatus")
+                                ?: applyContent?.optString("rewardStatus")
+                                ?: "unknown"
+
+                            if (rewardStatus == "success" || rewardStatus == "REWARD_SUCCESS") {
+                                Log.record(TAG, "任务完成: $taskName")
+                            } else {
+                                Log.record(TAG, "任务未发奖: $taskName, 状态: $rewardStatus")
+                            }
                         } else {
                             // 获取具体的错误信息
                             val errorMsg = applyComp?.optString("resultView")
+                                ?: applyComp?.optString("errorMsg")
                                 ?: resJo.optString("resultView", "未知错误")
 
                             Log.record(TAG, "任务失败: $taskName, 原因: $errorMsg")
@@ -158,7 +212,6 @@ object HaoJiaWuyou {
                     }
                 }
             }
-
         } catch (e: Exception) {
             Log.printStackTrace(TAG, e)
         }
